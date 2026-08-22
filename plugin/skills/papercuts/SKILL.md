@@ -7,7 +7,7 @@ description: File and manage papercuts — small, concrete moments of workflow f
 
 Papercuts live in an append-only journal, `.papercuts.jsonl`, at the repository root. The bundled CLI reads and writes it.
 
-The CLI sits at `bin/papercuts.mjs` inside this plugin's folder (two levels up from this skill file). Run it with Node 23+:
+The CLI sits at `bin/papercuts.mjs` inside this plugin's folder — the directory containing this plugin's `.codex-plugin/plugin.json`, two levels up from this skill file. Run it with Node 23+ (Node 22 works with `--experimental-strip-types`):
 
 ```bash
 node <plugin-root>/bin/papercuts.mjs <command> ...
@@ -33,12 +33,12 @@ Do not change the repo just because something annoyed you; filing is evidence ga
 ```bash
 node <plugin-root>/bin/papercuts.mjs list                          # open entries, severity-first
 node <plugin-root>/bin/papercuts.mjs list --status all             # include resolved
-node <plugin-root>/bin/papercuts.mjs resolve <id-prefix> --note "where the fix lives"
-node <plugin-root>/bin/papercuts.mjs remove <id-prefix>            # false positives only
+node <plugin-root>/bin/papercuts.mjs resolve <id-prefix> --note "where the fix lives" --agent codex
+node <plugin-root>/bin/papercuts.mjs remove <id-prefix> --agent codex   # false positives only
 ```
 
 Resolve only after the durable outcome exists and has been verified. For full triage methodology follow the `review-papercuts` skill.
 
 ## Output contract
 
-Every command prints one JSON envelope on stdout: `{"ok":true,"data":...}` on success, `{"ok":false,"error":{"code","message"}}` on failure (exit code 1 invalid input, 2 not found or ambiguous ID prefix). Empty results are success.
+Every command prints one JSON envelope on stdout: `{"ok":true,"data":...}` on success, `{"ok":false,"error":{"code","message"}}` on failure (with `candidates` listed when an ID prefix is ambiguous) (exit code 1 invalid input or usage, 2 not found or ambiguous ID prefix, 3 I/O error). Empty results are success.

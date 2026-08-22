@@ -5,7 +5,7 @@ description: Review the papercuts journal (.papercuts.jsonl) and improve how fut
 
 # Review Papercuts
 
-The journal is `.papercuts.jsonl` at the repository root; use the bundled CLI (see the `papercuts` skill for invocation details — `node <plugin-root>/bin/papercuts.mjs ...`, always with `--agent codex` on writes).
+The journal is `.papercuts.jsonl` at the repository root; use the bundled CLI (see the `papercuts` skill for invocation details — `node <plugin-root>/bin/papercuts.mjs ...`, pass `--agent codex` on every write command (add, resolve, remove)).
 
 The goal is not to clean up complaints. The goal is to make the next agent handle the same situation correctly without rediscovering it.
 

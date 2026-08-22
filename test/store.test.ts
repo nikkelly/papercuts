@@ -174,17 +174,61 @@ test("add warns when text looks like a resolution", () => {
   }
 });
 
-test("ids are content-addressed across severity and sorted tags", () => {
-  const minor = computeId("opencode", "same text", "minor", []);
-  const major = computeId("opencode", "same text", "major", []);
+test("ids are content-addressed across severity and sorted tags, not agent", () => {
+  const minor = computeId("same text", "minor", []);
+  const major = computeId("same text", "major", []);
   assert.notEqual(minor, major);
 
-  const tagOrderA = computeId("opencode", "same text", "minor", ["b", "a"]);
-  const tagOrderB = computeId("opencode", "same text", "minor", ["a", "b"]);
+  const tagOrderA = computeId("same text", "minor", ["b", "a"]);
+  const tagOrderB = computeId("same text", "minor", ["a", "b"]);
   assert.equal(tagOrderA, tagOrderB);
 
-  const otherText = computeId("opencode", "different text", "minor", []);
+  const otherText = computeId("different text", "minor", []);
   assert.notEqual(minor, otherText);
+
+  // Cross-host dedupe: identical friction filed by different agents shares one ID.
+  assert.equal(computeId("same text", "minor", []), minor);
+});
+
+test("add dedupes across agents and keeps the first filer's attribution", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const first = addPapercut({
+      text: "shared friction",
+      startDirectory: directory,
+      now: FIXTURE_TS,
+    });
+    assert.equal(first.record.agent, "opencode");
+    const second = addPapercut({
+      text: "shared friction",
+      agent: "codex",
+      startDirectory: directory,
+      now: new Date("2026-08-02T12:00:00.000Z"),
+    });
+    assert.equal(second.changed, false);
+    assert.equal(second.record.agent, "opencode");
+    assert.equal(readFile(directory).trim().split("\n").length, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("list filters by agent when provided and ignores unknown agents gracefully", () => {
+  const directory = createTemporaryRepository();
+  try {
+    addPapercut({ text: "from opencode", startDirectory: directory, now: FIXTURE_TS });
+    addPapercut({ text: "from codex", agent: "codex", startDirectory: directory, now: new Date("2026-08-02T00:00:00.000Z") });
+
+    assert.equal(listPapercuts({ startDirectory: directory }).total, 2);
+    assert.equal(listPapercuts({ agent: "codex", startDirectory: directory }).count, 1);
+    assert.equal(listPapercuts({ agent: "claude", startDirectory: directory }).count, 0);
+    assert.throws(
+      () => listPapercuts({ agent: "  ", startDirectory: directory }),
+      /empty or whitespace/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("resolve appends an event, marks the item resolved, and folds it out of open lists", () => {

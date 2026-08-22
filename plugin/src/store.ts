@@ -81,13 +81,12 @@ function lengthPrefix(value: string): Buffer {
 }
 
 export function computeId(
-  agent: string,
   text: string,
   severity: Severity,
   tags: string[],
 ): string {
   const hash = createHash("sha256");
-  for (const field of [agent, text, severity, [...tags].sort().join(",")]) {
+  for (const field of [text, severity, [...tags].sort().join(",")]) {
     hash.update(lengthPrefix(field));
   }
   return `pc_${hash.digest("hex").slice(0, 12)}`;
@@ -338,8 +337,8 @@ function appendLine(path: string, line: string, prior: Buffer | null): void {
 
 
 function effectiveAgent(options: { agent?: string }): string {
-  const agent = options.agent ?? AGENT;
-  if (agent.trim() === "") {
+  const agent = (options.agent ?? AGENT).trim();
+  if (agent === "") {
     throw new PapercutsError(
       "invalid_argument",
       "agent name cannot be empty or whitespace-only",
@@ -384,7 +383,7 @@ export function addPapercut(options: AddOptions): {
   const { path, repo } = discoverLogPath(options.startDirectory, options.env, options.exists);
   const ts = nowIso(options.now);
   const agent = effectiveAgent(options);
-  const id = computeId(agent, text, severity, tags);
+  const id = computeId(text, severity, tags);
 
   const trimmed = text.trimStart();
   const warnings: string[] = [];
@@ -464,9 +463,11 @@ export function listPapercuts(options: ListOptions): {
     };
   }
   const folded = foldBytes(bytes);
+  const agentFilter = options.agent === undefined ? undefined : effectiveAgent(options);
   const filtered = folded.items.filter(
     (item) =>
       (status === "all" || item.status === status) &&
+      (!agentFilter || item.cut.agent === agentFilter) &&
       (!options.tag || item.cut.tags.includes(options.tag)) &&
       (!options.severity || item.cut.severity === options.severity),
   );
