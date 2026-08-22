@@ -94,10 +94,13 @@ export function computeId(
   return `pc_${hash.digest("hex").slice(0, 12)}`;
 }
 
-export function findRepositoryRoot(startDirectory: string): string | null {
+export function findRepositoryRoot(
+  startDirectory: string,
+  exists: (path: string) => boolean = existsSync,
+): string | null {
   let directory = resolve(startDirectory);
   while (true) {
-    if (existsSync(join(directory, ".git"))) {
+    if (exists(join(directory, ".git"))) {
       return directory;
     }
     const parent = dirname(directory);
@@ -111,17 +114,20 @@ export function findRepositoryRoot(startDirectory: string): string | null {
 export function discoverLogPath(
   startDirectory: string,
   env: NodeJS.ProcessEnv = process.env,
+  exists: (path: string) => boolean = existsSync,
 ): { path: string; repo: string | null; explicit: boolean } {
   const explicit = env.PAPERCUTS_FILE;
   if (explicit && explicit.trim() !== "") {
-    return { path: resolve(explicit), repo: findRepositoryRoot(startDirectory), explicit: true };
+    return { path: resolve(explicit), repo: findRepositoryRoot(startDirectory, exists), explicit: true };
   }
-  const repo = findRepositoryRoot(startDirectory);
+  const repo = findRepositoryRoot(startDirectory, exists);
   if (repo) {
     return { path: join(repo, ".papercuts.jsonl"), repo, explicit: false };
   }
+  const home =
+    env.HOME && env.HOME.trim() !== "" ? env.HOME : homedir();
   return {
-    path: join(homedir(), ".papercuts", "log.jsonl"),
+    path: join(home, ".papercuts", "log.jsonl"),
     repo: null,
     explicit: false,
   };
@@ -342,6 +348,7 @@ export interface AddOptions {
   cmd?: string;
   exitCode?: number;
   startDirectory: string;
+  exists?: (path: string) => boolean;
   now?: Date;
   env?: NodeJS.ProcessEnv;
 }
@@ -366,7 +373,7 @@ export function addPapercut(options: AddOptions): {
   }
   const severity = options.severity ?? "minor";
   const tags = options.tag ? [options.tag] : [];
-  const { path, repo } = discoverLogPath(options.startDirectory, options.env);
+  const { path, repo } = discoverLogPath(options.startDirectory, options.env, options.exists);
   const ts = nowIso(options.now);
   const id = computeId(AGENT, text, severity, tags);
 
@@ -420,6 +427,7 @@ export interface ListOptions {
   severity?: Severity;
   limit?: number;
   startDirectory: string;
+  exists?: (path: string) => boolean;
   env?: NodeJS.ProcessEnv;
 }
 
@@ -433,7 +441,7 @@ export function listPapercuts(options: ListOptions): {
 } {
   const status = options.status ?? "open";
   const limit = Math.max(1, options.limit ?? 20);
-  const { path } = discoverLogPath(options.startDirectory, options.env);
+  const { path } = discoverLogPath(options.startDirectory, options.env, options.exists);
   const bytes = readLogBytes(path);
   if (!bytes) {
     return {
@@ -467,6 +475,7 @@ export interface ResolveOptions {
   idPrefix: string;
   note?: string;
   startDirectory: string;
+  exists?: (path: string) => boolean;
   now?: Date;
   env?: NodeJS.ProcessEnv;
 }
@@ -477,7 +486,7 @@ export function resolvePapercut(options: ResolveOptions): {
   warnings: string[];
 } {
   const prefix = normalizeId(options.idPrefix);
-  const { path } = discoverLogPath(options.startDirectory, options.env);
+  const { path } = discoverLogPath(options.startDirectory, options.env, options.exists);
   const prior = readLogBytes(path);
   if (!prior) {
     throw new PapercutsError("not_found", "no papercuts file exists yet");
@@ -515,6 +524,7 @@ export function resolvePapercut(options: ResolveOptions): {
 export interface RemoveOptions {
   idPrefix: string;
   startDirectory: string;
+  exists?: (path: string) => boolean;
   now?: Date;
   env?: NodeJS.ProcessEnv;
 }
@@ -525,13 +535,17 @@ export function removePapercut(options: RemoveOptions): {
   warnings: string[];
 } {
   const prefix = normalizeId(options.idPrefix);
-  const { path } = discoverLogPath(options.startDirectory, options.env);
+  const { path } = discoverLogPath(options.startDirectory, options.env, options.exists);
   const prior = readLogBytes(path);
   if (!prior) {
     throw new PapercutsError("not_found", "no papercuts file exists yet");
   }
   const folded = foldBytes(prior);
-  const id = matchId(prefix, folded.items.map((item) => item.cut.id));
+  const candidates = [
+    ...folded.items.map((item) => item.cut.id),
+    ...folded.removedIds,
+  ];
+  const id = matchId(prefix, candidates);
   if (folded.removedIds.has(id)) {
     return { changed: false, id, warnings: ["already removed"] };
   }

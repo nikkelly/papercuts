@@ -8,7 +8,7 @@ import {
   PapercutsError,
   addPapercut,
   computeId,
-  findRepositoryRoot,
+  discoverLogPath,
   listPapercuts,
   removePapercut,
   resolvePapercut,
@@ -70,30 +70,34 @@ test("add records at the repository root when invoked from a subdirectory", () =
   }
 });
 
-test(
-  "add falls back to the home log outside a git repository",
-  { skip: findRepositoryRoot(tmpdir()) !== null ? "a parent of tmpdir contains .git" : false },
-  () => {
-    const home = createTemporaryDirectory();
-    const workdir = createTemporaryDirectory();
-    try {
-      const result = addPapercut({
-        text: "no repo anywhere",
-        startDirectory: workdir,
-        env: { HOME: home },
-        now: FIXTURE_TS,
-      });
-      assert.equal(result.record.repo, null);
-      assert.ok(
-        readFile(home, join(".papercuts", "log.jsonl")).includes("no repo anywhere"),
-      );
-      assert.equal(existsSync(logPath(workdir)), false);
-    } finally {
-      rmSync(home, { recursive: true, force: true });
-      rmSync(workdir, { recursive: true, force: true });
-    }
-  },
-);
+test("add falls back to the home log outside a git repository", () => {
+  const home = createTemporaryDirectory();
+  const workdir = createTemporaryDirectory();
+  try {
+    // Injected exists() guarantees no repository is found, regardless of
+    // whether a real ancestor of tmpdir (e.g. /tmp) happens to contain .git.
+    const discovered = discoverLogPath(workdir, { HOME: home }, () => false);
+    assert.equal(discovered.repo, null);
+    assert.equal(discovered.explicit, false);
+    assert.equal(discovered.path, join(home, ".papercuts", "log.jsonl"));
+
+    const result = addPapercut({
+      text: "no repo anywhere",
+      startDirectory: workdir,
+      env: { HOME: home },
+      now: FIXTURE_TS,
+      exists: () => false,
+    });
+    assert.equal(result.record.repo, null);
+    assert.ok(
+      readFile(home, join(".papercuts", "log.jsonl")).includes("no repo anywhere"),
+    );
+    assert.equal(existsSync(logPath(workdir)), false);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+    rmSync(workdir, { recursive: true, force: true });
+  }
+});
 
 test("PAPERCUTS_FILE overrides repository discovery", () => {
   const directory = createTemporaryRepository();
@@ -184,6 +188,9 @@ test("ids are content-addressed across severity and sorted tags", () => {
   const tagOrderA = computeId("opencode", "same text", "minor", ["b", "a"]);
   const tagOrderB = computeId("opencode", "same text", "minor", ["a", "b"]);
   assert.equal(tagOrderA, tagOrderB);
+
+  const otherText = computeId("opencode", "different text", "minor", []);
+  assert.notEqual(minor, otherText);
 });
 
 test("resolve appends an event, marks the item resolved, and folds it out of open lists", () => {
@@ -314,6 +321,9 @@ test("list sorts severity-first then newest and respects limit with truncation m
     const untruncated = listPapercuts({ startDirectory: directory });
     assert.equal(untruncated.truncated, false);
     assert.equal(untruncated.count, 4);
+    // Newest-first within the same severity.
+    assert.equal(untruncated.items[2]?.cut.text, "newer minor");
+    assert.equal(untruncated.items[3]?.cut.text, "old minor");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -347,7 +357,8 @@ test("fold tolerates torn tails, malformed lines, unknown kinds, and orphan reso
       JSON.stringify({ kind: "resolve", id: "pc_000000000000", ts: "2026-08-02T00:00:00.000Z" }),
       '{"kind":"cut","id":"pc_bad","ts":"nope","text":"x","tags":[],"severity":"minor"}',
     ].join("\n") + "\n");
-    appendRaw(directory, '{"kind":"cut"');
+    // Torn final line: written without a trailing newline.
+    appendFileSync(logPath(directory), '{"kind":"cut"', "utf8");
 
     const listed = listPapercuts({ status: "all", startDirectory: directory });
     assert.equal(listed.count, 1);
@@ -369,8 +380,7 @@ test("appends insert a separating newline when the log lacks a trailing newline"
     const result = addPapercut({ text: "after dirty tail", startDirectory: directory });
     assert.equal(result.changed, true);
     const raw = readFile(directory);
-    assert.ok(raw.startsWith(dirtyTail));
-    assert.ok(raw.split("\n").length >= 3);
+    assert.equal(raw, dirtyTail + "\n" + JSON.stringify(result.record) + "\n");
     const listed = listPapercuts({ status: "all", startDirectory: directory });
     assert.equal(listed.count, 1);
     assert.equal(listed.items[0]?.cut.text, "after dirty tail");
@@ -403,8 +413,68 @@ test("add stores lightweight evidence on tool failures and omits it otherwise", 
   }
 });
 
+test("fold reports duplicate cut and duplicate resolve warnings with a single item", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const added = addPapercut({ text: "logged twice", startDirectory: directory, now: FIXTURE_TS });
+    const firstLine = readFile(directory).trim();
+    // Same id (content-addressed), conflicting payload.
+    appendRaw(directory, JSON.stringify({ ...JSON.parse(firstLine), ts: "2026-08-07T00:00:00.000Z" }));
+    const resolveLine = JSON.stringify({
+      kind: "resolve",
+      id: added.record.id,
+      ts: "2026-08-08T00:00:00.000Z",
+      agent: "opencode",
+    });
+    appendRaw(directory, resolveLine);
+    appendRaw(directory, resolveLine);
+
+    const listed = listPapercuts({ status: "all", startDirectory: directory });
+    assert.equal(listed.count, 1);
+    assert.ok(listed.warnings.some((warning) => warning === "skipped 1 duplicate cut"));
+    assert.ok(listed.warnings.some((warning) => warning === "skipped 1 duplicate resolve"));
+    assert.equal(listed.items[0]?.status, "resolved");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("remove is idempotent and does not append a second remove event", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const added = addPapercut({ text: "transient complaint", startDirectory: directory, now: FIXTURE_TS });
+    const first = removePapercut({ idPrefix: added.record.id, startDirectory: directory, now: new Date("2026-08-04T00:00:00.000Z") });
+    assert.equal(first.changed, true);
+    const lineCountAfterFirst = readFile(directory).trim().split("\n").length;
+
+    const second = removePapercut({ idPrefix: added.record.id, startDirectory: directory });
+    assert.equal(second.changed, false);
+    assert.ok(second.warnings.some((warning) => warning.includes("already removed")));
+    assert.equal(readFile(directory).trim().split("\n").length, lineCountAfterFirst);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("resolve cannot target an already-removed papercut and remove stays idempotent", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const added = addPapercut({ text: "gone", startDirectory: directory, now: FIXTURE_TS });
+    removePapercut({ idPrefix: added.record.id, startDirectory: directory, now: new Date("2026-08-04T00:00:00.000Z") });
+    assert.throws(
+      () => resolvePapercut({ idPrefix: added.record.id, startDirectory: directory }),
+      /no papercut matches/,
+    );
+    const secondRemove = removePapercut({ idPrefix: added.record.id, startDirectory: directory });
+    assert.equal(secondRemove.changed, false);
+    assert.ok(secondRemove.warnings.some((warning) => warning.includes("already removed")));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function appendRaw(directory: string, content: string) {
-  appendFileSync(logPath(directory), content, "utf8");
+  appendFileSync(logPath(directory), content.endsWith("\n") ? content : content + "\n", "utf8");
 }
 
 function writeRaw(directory: string, content: string) {
