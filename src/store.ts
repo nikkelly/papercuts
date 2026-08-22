@@ -82,14 +82,13 @@ function lengthPrefix(value: string): Buffer {
 }
 
 export function computeId(
-  ts: string,
   agent: string,
   text: string,
   severity: Severity,
   tags: string[],
 ): string {
   const hash = createHash("sha256");
-  for (const field of [ts, agent, text, severity, [...tags].sort().join(",")]) {
+  for (const field of [agent, text, severity, [...tags].sort().join(",")]) {
     hash.update(lengthPrefix(field));
   }
   return `pc_${hash.digest("hex").slice(0, 12)}`;
@@ -166,7 +165,7 @@ function matchId(prefix: string, ids: string[]): string {
 export function foldBytes(bytes: Buffer): FoldResult {
   const cuts = new Map<string, CutRecord>();
   const resolves = new Map<string, Resolution>();
-  const removedIds = new Set<string>();
+  const removes = new Map<string, string>();
   const counts = { torn: 0, malformed: 0, unknown: 0, duplicateCut: 0, duplicateResolve: 0, orphan: 0 };
 
   let completeLength = bytes.length;
@@ -201,9 +200,9 @@ export function foldBytes(bytes: Buffer): FoldResult {
         cut.tags.sort();
         if (cuts.has(cut.id)) {
           counts.duplicateCut += 1;
-        } else {
-          cuts.set(cut.id, cut);
         }
+        // Last-wins so a re-added papercut supersedes its earlier suppressed self.
+        cuts.set(cut.id, cut);
         break;
       }
       case "resolve": {
@@ -226,11 +225,12 @@ export function foldBytes(bytes: Buffer): FoldResult {
       }
       case "remove": {
         const id = typeof record.id === "string" ? record.id : "";
-        if (!id) {
+        const ts = typeof record.ts === "string" ? record.ts : "";
+        if (!id || Number.isNaN(Date.parse(ts))) {
           counts.malformed += 1;
           break;
         }
-        removedIds.add(id);
+        removes.set(id, ts);
         break;
       }
       default:
@@ -244,21 +244,26 @@ export function foldBytes(bytes: Buffer): FoldResult {
     }
   }
 
-  const items: ListItem[] = [...cuts.values()]
-    .filter((cut) => !removedIds.has(cut.id))
-    .map((cut) => {
-      const resolution = resolves.get(cut.id);
-      return {
-        cut,
-        status: resolution ? ("resolved" as const) : ("open" as const),
-        ...(resolution ? { resolution } : {}),
-      };
-    })
-    .sort((left, right) =>
-      SEVERITY_RANK[right.cut.severity] - SEVERITY_RANK[left.cut.severity] ||
-      Date.parse(right.cut.ts) - Date.parse(left.cut.ts) ||
-      left.cut.id.localeCompare(right.cut.id),
-    );
+  const items: ListItem[] = [];
+  const removedIds = new Set<string>();
+  for (const cut of cuts.values()) {
+    const removedTs = removes.get(cut.id);
+    if (removedTs !== undefined && Date.parse(removedTs) >= Date.parse(cut.ts)) {
+      removedIds.add(cut.id);
+      continue;
+    }
+    const resolution = resolves.get(cut.id);
+    items.push({
+      cut,
+      status: resolution ? ("resolved" as const) : ("open" as const),
+      ...(resolution ? { resolution } : {}),
+    });
+  }
+  items.sort((left, right) =>
+    SEVERITY_RANK[right.cut.severity] - SEVERITY_RANK[left.cut.severity] ||
+    Date.parse(right.cut.ts) - Date.parse(left.cut.ts) ||
+    left.cut.id.localeCompare(right.cut.id),
+  );
 
   const warnings: string[] = [];
   const warn = (count: number, label: string) => {
@@ -363,7 +368,7 @@ export function addPapercut(options: AddOptions): {
   const tags = options.tag ? [options.tag] : [];
   const { path, repo } = discoverLogPath(options.startDirectory, options.env);
   const ts = nowIso(options.now);
-  const id = computeId(ts, AGENT, text, severity, tags);
+  const id = computeId(AGENT, text, severity, tags);
 
   const trimmed = text.trimStart();
   const warnings: string[] = [];
