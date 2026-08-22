@@ -185,7 +185,7 @@ await scenario("PAPERCUTS_FILE override routes tool writes to a private log", as
   }
 });
 
-await scenario("concurrent sessions appending interleaved records keep the fold consistent", async () => {
+await scenario("many sessions appending in quick succession keep the fold consistent", async () => {
   const directory = createTemporaryRepository();
   try {
     const writes = Array.from({ length: 20 }, (_, index) =>
