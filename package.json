@@ -9,11 +9,12 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./store": "./src/store.ts"
+    "./store": "./plugin/src/store.ts"
   },
   "files": [
     "src",
-    "skill"
+    "skill",
+    "plugin"
   ],
   "keywords": [
     "opencode",

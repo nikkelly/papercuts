@@ -8,7 +8,7 @@ import {
   listPapercuts,
   removePapercut,
   resolvePapercut,
-} from "./store.ts";
+} from "../plugin/src/store.ts";
 
 function startDirectory(context: { worktree?: string; directory?: string }): string {
   const candidates = [context.directory, context.worktree];

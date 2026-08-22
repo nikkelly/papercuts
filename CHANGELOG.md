@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Codex plugin (`plugin/`): skills-based integration with a zero-dependency CLI
+  (`bin/papercuts.mjs`), distributable via git marketplace — no npm or MCP required.
+- Agent attribution: store operations accept an `agent` option (default `opencode`);
+  the CLI passes `--agent codex`, so journal entries record their source host.
+- Repo marketplace manifest at `.agents/plugins/marketplace.json`.
+
 ## 0.1.0
 
 Initial release.

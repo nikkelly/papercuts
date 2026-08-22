@@ -12,7 +12,7 @@ import {
   listPapercuts,
   removePapercut,
   resolvePapercut,
-} from "../src/store.ts";
+} from "../plugin/src/store.ts";
 
 const FIXTURE_TS = new Date("2026-08-01T12:00:00.000Z");
 
