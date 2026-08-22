@@ -9,8 +9,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/nikkelly/opencode-papercuts.git",
-        "path": "./plugin",
-        "ref": "codex-plugin"
+        "path": "./plugin"
       },
       "policy": {
         "installation": "AVAILABLE",
