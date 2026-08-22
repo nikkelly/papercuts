@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
+  "private": true,
   "name": "opencode-papercuts",
   "version": "0.1.0",
   "description": "An opencode plugin giving agents a complaint box: log, list, resolve, and remove papercuts in an append-only JSONL journal",
