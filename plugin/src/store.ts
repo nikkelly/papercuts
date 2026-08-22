@@ -81,13 +81,12 @@ function lengthPrefix(value: string): Buffer {
 }
 
 export function computeId(
-  agent: string,
   text: string,
   severity: Severity,
   tags: string[],
 ): string {
   const hash = createHash("sha256");
-  for (const field of [agent, text, severity, [...tags].sort().join(",")]) {
+  for (const field of [text, severity, [...tags].sort().join(",")]) {
     hash.update(lengthPrefix(field));
   }
   return `pc_${hash.digest("hex").slice(0, 12)}`;
@@ -336,9 +335,22 @@ function appendLine(path: string, line: string, prior: Buffer | null): void {
   appendFileSync(path, payload, "utf8");
 }
 
+
+function effectiveAgent(options: { agent?: string }): string {
+  const agent = (options.agent ?? AGENT).trim();
+  if (agent === "") {
+    throw new PapercutsError(
+      "invalid_argument",
+      "agent name cannot be empty or whitespace-only",
+    );
+  }
+  return agent;
+}
+
 export interface AddOptions {
   text: string;
   tag?: string;
+  agent?: string;
   severity?: Severity;
   cmd?: string;
   exitCode?: number;
@@ -370,7 +382,8 @@ export function addPapercut(options: AddOptions): {
   const tags = options.tag ? [options.tag] : [];
   const { path, repo } = discoverLogPath(options.startDirectory, options.env, options.exists);
   const ts = nowIso(options.now);
-  const id = computeId(AGENT, text, severity, tags);
+  const agent = effectiveAgent(options);
+  const id = computeId(text, severity, tags);
 
   const trimmed = text.trimStart();
   const warnings: string[] = [];
@@ -386,7 +399,7 @@ export function addPapercut(options: AddOptions): {
     kind: "cut",
     id,
     ts,
-    agent: AGENT,
+    agent,
     text,
     tags,
     severity,
@@ -417,6 +430,7 @@ export function addPapercut(options: AddOptions): {
 }
 
 export interface ListOptions {
+  agent?: string;
   status?: "open" | "resolved" | "all";
   tag?: string;
   severity?: Severity;
@@ -449,9 +463,11 @@ export function listPapercuts(options: ListOptions): {
     };
   }
   const folded = foldBytes(bytes);
+  const agentFilter = options.agent === undefined ? undefined : effectiveAgent(options);
   const filtered = folded.items.filter(
     (item) =>
       (status === "all" || item.status === status) &&
+      (!agentFilter || item.cut.agent === agentFilter) &&
       (!options.tag || item.cut.tags.includes(options.tag)) &&
       (!options.severity || item.cut.severity === options.severity),
   );
@@ -467,6 +483,7 @@ export function listPapercuts(options: ListOptions): {
 }
 
 export interface ResolveOptions {
+  agent?: string;
   idPrefix: string;
   note?: string;
   startDirectory: string;
@@ -497,11 +514,12 @@ export function resolvePapercut(options: ResolveOptions): {
     };
   }
   const ts = nowIso(options.now);
+  const agent = effectiveAgent(options);
   const event = {
     kind: "resolve",
     id,
     ts,
-    agent: AGENT,
+    agent,
     ...(options.note !== undefined ? { note: options.note } : {}),
   };
   appendLine(path, JSON.stringify(event), prior);
@@ -510,13 +528,14 @@ export function resolvePapercut(options: ResolveOptions): {
     item: {
       ...item,
       status: "resolved",
-      resolution: { ts, agent: AGENT, note: options.note },
+      resolution: { ts, agent, note: options.note },
     },
     warnings: [],
   };
 }
 
 export interface RemoveOptions {
+  agent?: string;
   idPrefix: string;
   startDirectory: string;
   exists?: (path: string) => boolean;
@@ -548,7 +567,7 @@ export function removePapercut(options: RemoveOptions): {
     kind: "remove",
     id,
     ts: nowIso(options.now),
-    agent: AGENT,
+    agent: effectiveAgent(options),
   };
   appendLine(path, JSON.stringify(event), prior);
   return { changed: true, id, warnings: [] };
