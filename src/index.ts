@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
+import { resolve } from "node:path";
 import { z } from "zod";
 import {
   PapercutsError,
@@ -10,7 +11,13 @@ import {
 } from "./store.ts";
 
 function startDirectory(context: { worktree?: string; directory?: string }): string {
-  return context.worktree || context.directory || process.cwd();
+  const candidates = [context.directory, context.worktree];
+  for (const candidate of candidates) {
+    if (candidate && candidate.trim() !== "" && resolve(candidate) !== "/") {
+      return candidate;
+    }
+  }
+  return process.cwd();
 }
 
 function fail(error: unknown): never {
