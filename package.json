@@ -12,8 +12,21 @@
     "./store": "./src/store.ts"
   },
   "files": [
-    "src"
+    "src",
+    "skill"
   ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "ai-agents",
+    "papercuts",
+    "friction-log",
+    "developer-experience"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nikkelly/opencode-papercuts.git"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/*.test.ts\"",
