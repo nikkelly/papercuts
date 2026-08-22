@@ -9,6 +9,10 @@ import {
   resolvePapercut,
 } from "./store.ts";
 
+function startDirectory(context: { worktree?: string; directory?: string }): string {
+  return context.worktree || context.directory || process.cwd();
+}
+
 function fail(error: unknown): never {
   if (error instanceof PapercutsError) {
     throw error;
@@ -48,7 +52,7 @@ export const papercutsPlugin = (async () => ({
             severity: args.severity,
             cmd: args.cmd,
             exitCode: args.exitCode,
-            startDirectory: context.worktree || context.directory,
+            startDirectory: startDirectory(context),
           });
           return JSON.stringify({ ok: true, ...result }, null, 2);
         } catch (error) {
@@ -78,7 +82,7 @@ export const papercutsPlugin = (async () => ({
             tag: args.tag,
             severity: args.severity,
             limit: args.limit,
-            startDirectory: context.worktree || context.directory,
+            startDirectory: startDirectory(context),
           });
           return JSON.stringify({ ok: true, ...result }, null, 2);
         } catch (error) {
@@ -98,7 +102,7 @@ export const papercutsPlugin = (async () => ({
           const result = resolvePapercut({
             idPrefix: args.id,
             note: args.note,
-            startDirectory: context.worktree || context.directory,
+            startDirectory: startDirectory(context),
           });
           return JSON.stringify({ ok: true, ...result }, null, 2);
         } catch (error) {
@@ -116,7 +120,7 @@ export const papercutsPlugin = (async () => ({
         try {
           const result = removePapercut({
             idPrefix: args.id,
-            startDirectory: context.worktree || context.directory,
+            startDirectory: startDirectory(context),
           });
           return JSON.stringify({ ok: true, ...result }, null, 2);
         } catch (error) {
