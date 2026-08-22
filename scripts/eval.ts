@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import papercutsPlugin from "../src/index.ts";
 import type { ToolContext } from "@opencode-ai/plugin";
+import { z } from "zod";
 
 const FIXTURE_TS = new Date("2026-08-01T12:00:00.000Z");
 
@@ -198,6 +199,58 @@ await scenario("many sessions appending in quick succession keep the fold consis
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+await scenario("list filter combinations compose through the tool surface", async () => {
+  const directory = createTemporaryRepository();
+  try {
+    const add = (args: Record<string, unknown>) =>
+      tools.papercuts_add.execute(args, makeContext(directory));
+    await add({ text: "tagged minor", tag: "docs" });
+    await add({ text: "untagged blocker", severity: "blocker" });
+    await add({ text: "tagged major", tag: "docs", severity: "major" });
+    const blocker = JSON.parse(await tools.papercuts_list.execute({ severity: "blocker" }, makeContext(directory)) as string);
+    await tools.papercuts_resolve.execute({ id: blocker.items[0].cut.id }, makeContext(directory));
+
+    assert.equal(JSON.parse(await tools.papercuts_list.execute({}, makeContext(directory)) as string).total, 2);
+    assert.equal(
+      JSON.parse(await tools.papercuts_list.execute({ status: "all" }, makeContext(directory)) as string).total,
+      3,
+    );
+    assert.equal(
+      JSON.parse(await tools.papercuts_list.execute({ status: "resolved" }, makeContext(directory)) as string).count,
+      1,
+    );
+    assert.equal(JSON.parse(await tools.papercuts_list.execute({ tag: "docs" }, makeContext(directory)) as string).count, 2);
+    assert.equal(
+      JSON.parse(await tools.papercuts_list.execute({ tag: "docs", severity: "major" }, makeContext(directory)) as string)
+        .items[0].cut.text,
+      "tagged major",
+    );
+    // Resolved entries fold out of open views even when a filter matches their tag/severity.
+    assert.equal(JSON.parse(await tools.papercuts_list.execute({ severity: "blocker" }, makeContext(directory)) as string).total, 0);
+
+    const limited = JSON.parse(await tools.papercuts_list.execute({ limit: 1 }, makeContext(directory)) as string);
+    assert.equal(limited.count, 1);
+    assert.equal(limited.truncated, true);
+    assert.equal(limited.total, 2);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+await scenario("tool argument schemas reject malformed input before execution", async () => {
+  const shapeOf = (name: string) => (tools as Record<string, { args: z.ZodRawShape }>)[name]!.args;
+  const addSchema = z.object(shapeOf("papercuts_add"));
+  assert.equal(addSchema.safeParse({ text: "ok", severity: "catastrophic" }).success, false);
+  assert.equal(addSchema.safeParse({ text: "ok", exitCode: "one" }).success, false);
+  assert.equal(addSchema.safeParse({ text: "ok", severity: "major", cmd: "npm test", exitCode: 1 }).success, true);
+  const resolveSchema = z.object(shapeOf("papercuts_resolve"));
+  assert.equal(resolveSchema.safeParse({}).success, false);
+  assert.equal(resolveSchema.safeParse({ id: "pc_9f2c41" }).success, true);
+  const listSchema = z.object(shapeOf("papercuts_list"));
+  assert.equal(listSchema.safeParse({ status: "archived" }).success, false);
+  assert.equal(listSchema.safeParse({ limit: 5 }).success, true);
 });
 
 await scenario("remove drops false positives from the reviewer's queue", async () => {

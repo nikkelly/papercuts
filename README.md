@@ -135,16 +135,18 @@ project's `AGENTS.md` (both hosts read it; keep both lines so either host knows 
 ```
 ## Papercuts
 
-When you hit friction during work — a dead-end tool call, a broken link, a misleading
-doc, a footgun config — file it before moving on, then push on. Don't stop working.
+MANDATORY: whenever a command you ran fails unexpectedly — a nonzero exit you could not
+have predicted from the task — you MUST call out before doing anything else, then push
+on without stopping. Same for broken links, misleading docs, and footgun configs:
 
 - In opencode, use the native tool:
       papercuts_add(text="what you hit and what would have prevented it", tag="<area>")
 - In Codex, use the bundled plugin CLI:
       node <plugin-root>/bin/papercuts.mjs add "what you hit and what would have prevented it" --tag <area> --agent codex
 
+Do not file failures that ARE the assigned task itself (e.g. a test you were told to fix).
 Severity: minor (default) for annoyances, major for time sinks, blocker for hard walls.
-Attach cmd/exitCode when filing tool failures. Never include secrets.
+Never include secrets.
 ```
 
 Then periodically have an agent review the journal — "review papercuts" — fix root
@@ -158,6 +160,30 @@ npm test          # unit tests (node:test) + CLI tests
 npm run typecheck # tsc --noEmit
 npm run eval      # end-to-end evaluation through the opencode plugin tool surface
 ```
+
+### Behavioral evaluation (trigger rate)
+
+`npm run eval` proves the tools do what they're told; `npm run eval:behavioral`
+proves the agent doesn't call them too often. It drives real headless sessions
+(`opencode run --auto`) against disposable fixture repositories — some seeded with
+genuine friction, some deliberately clean — then grades `.papercuts.jsonl` and the
+session's tool-call telemetry:
+
+- **clean** sessions must file nothing; more than one spurious filing across all
+  clean runs fails the over-triggering gate.
+- **friction** sessions (broken cwd-dependent script, dead README command, build
+  broken during an unrelated task) must produce at least one standing filing.
+- **ambiguous** sessions (the failing test *is* the task) must not leave assigned
+  work filed as open friction.
+
+```shell
+PAPERCUTS_EVAL_MODEL=anthropic/claude-sonnet-4-20250514 npm run eval:behavioral
+# options: --only=<substring>  --repeat=<n>  --keep   (keeps fixtures for debugging)
+```
+
+Sessions cost tokens and are nondeterministic, so this is a gated statistical check,
+not part of `npm test`. Configure a provider with `opencode auth` first, or pin a
+model with `PAPERCUTS_EVAL_MODEL`; per-run timeout via `PAPERCUTS_EVAL_TIMEOUT_MS`.
 
 ### Architecture
 
