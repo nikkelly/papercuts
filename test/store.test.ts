@@ -70,31 +70,25 @@ test("add records at the repository root when invoked from a subdirectory", () =
   }
 });
 
-test("add falls back to the home log outside a git repository", () => {
-  const home = createTemporaryDirectory();
+test("add anchors the journal to the working directory outside a git repository", () => {
   const workdir = createTemporaryDirectory();
   try {
     // Injected exists() guarantees no repository is found, regardless of
     // whether a real ancestor of tmpdir (e.g. /tmp) happens to contain .git.
-    const discovered = discoverLogPath(workdir, { HOME: home }, () => false);
+    const discovered = discoverLogPath(workdir, {}, () => false);
     assert.equal(discovered.repo, null);
     assert.equal(discovered.explicit, false);
-    assert.equal(discovered.path, join(home, ".papercuts", "log.jsonl"));
+    assert.equal(discovered.path, join(workdir, ".papercuts.jsonl"));
 
     const result = addPapercut({
       text: "no repo anywhere",
       startDirectory: workdir,
-      env: { HOME: home },
       now: FIXTURE_TS,
       exists: () => false,
     });
     assert.equal(result.record.repo, null);
-    assert.ok(
-      readFile(home, join(".papercuts", "log.jsonl")).includes("no repo anywhere"),
-    );
-    assert.equal(existsSync(logPath(workdir)), false);
+    assert.ok(readFile(workdir).includes("no repo anywhere"));
   } finally {
-    rmSync(home, { recursive: true, force: true });
     rmSync(workdir, { recursive: true, force: true });
   }
 });

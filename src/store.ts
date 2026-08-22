@@ -6,7 +6,6 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 export const AGENT = "opencode";
@@ -124,13 +123,9 @@ export function discoverLogPath(
   if (repo) {
     return { path: join(repo, ".papercuts.jsonl"), repo, explicit: false };
   }
-  const home =
-    env.HOME && env.HOME.trim() !== "" ? env.HOME : homedir();
-  return {
-    path: join(home, ".papercuts", "log.jsonl"),
-    repo: null,
-    explicit: false,
-  };
+  // Papercuts are repository-specific friction; without a repository the
+  // journal stays anchored to the working directory instead of a global log.
+  return { path: join(resolve(startDirectory), ".papercuts.jsonl"), repo: null, explicit: false };
 }
 
 export function normalizeId(input: string): string {
