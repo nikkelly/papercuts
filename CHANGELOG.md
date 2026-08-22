@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- TUI sidebar widget (`src/tui.tsx`): renders open papercut count with today trend and
+  severity breakdown in the right sidebar next to Context/LSP; theme-colored escalation
+  (error for open blockers, warning at ≥3 opened today or ≥2 open majors); collapse
+  matches the built-in Todo section.
 - Codex plugin (`plugin/`): skills-based integration with a zero-dependency CLI
   (`bin/papercuts.mjs`), distributable via git marketplace — no npm or MCP required.
 - Agent attribution: store operations accept an `agent` option (default `opencode`);

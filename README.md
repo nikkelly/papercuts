@@ -76,6 +76,27 @@ Restart opencode after changing plugins — config is loaded once at startup.
 
 The review skill ships in `skill/`; add its path under `"skills": {"paths": [...]}`.
 
+### TUI sidebar widget
+
+The repo also ships a TUI plugin that makes friction visible at a glance: a PAPERCUTS
+section in the right sidebar (next to Context and LSP) showing the open count, how many
+were filed today, and a severity breakdown when majors or blockers are open. It hides
+with the sidebar on narrow windows and disappears entirely when there is nothing open.
+
+Color escalates with friction — muted normally, warning at three filed today (or two
+open majors), error while any blocker is open. Collapse works like the built-in Todo
+section: click the title to toggle; the chevron appears only above two open entries.
+
+Enable it by listing the TUI module in `.opencode/tui.json` (or
+`~/.config/opencode/tui.json` for everywhere):
+
+```json
+{
+  "$schema": "https://opencode.ai/tui.json",
+  "plugin": ["~/code/opencode-papercuts/src/tui.tsx"]
+}
+```
+
 ## Install for Codex (plugin)
 
 The same journal works in Codex through a skills-based plugin — no MCP server, no npm.
@@ -191,6 +212,7 @@ One shared journal core, thin host adapters:
 
 - `plugin/src/store.ts` — canonical store: discovery, content-addressed IDs, tolerant fold
 - `src/index.ts` — opencode adapter (native tools via `@opencode-ai/plugin`)
+- `src/tui.tsx` + `src/tui-stats.ts` — opencode TUI sidebar widget (reads the same journal)
 - `plugin/bin/papercuts.mjs` + `plugin/skills/` — Codex adapter (skills-guided CLI)
 
 Both adapters write identical `.papercuts.jsonl` records; entries record the filing agent.
