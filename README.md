@@ -9,12 +9,44 @@ complaints into durable fixes. Inspired by [treygoff24/papercuts](https://github
 
 ## Quickstart
 
-1. Install for your agent ([opencode](#install-for-opencode) or [Codex](#install-for-codex-plugin))
-2. Add the [agent instructions](#give-your-agents-the-pen) to your project's `AGENTS.md`
-3. In a new session, say: *"file a papercut: the test runner only worked from apps/web"*
-4. Confirm it landed: `cat .papercuts.jsonl`
+1. Install for your agent ([opencode](#install-for-opencode) or [Codex](#install-for-codex-plugin)) —
+   or run the [one-command full install](#one-command-full-install) which does both hosts and the CLI.
+2. Put the `papercuts` command on PATH — `npm run install:cli` in this repo (idempotent;
+   also run automatically by `npm run install:codex`). Optional, but lets any shell, and
+   either host, use `papercuts add|list|resolve|remove|mute|status` directly.
+3. Add the [agent instructions](#give-your-agents-the-pen) to your project's `AGENTS.md`
+4. In a new session, say: *"file a papercut: the test runner only worked from apps/web"*
+5. Confirm it landed: `cat .papercuts.jsonl`
 
 That's it — the journal is created on first write, no init step.
+
+## One-command full install
+
+From a clone of this repo, install for **both hosts and the CLI** in one shot:
+
+```bash
+npm run install:all
+```
+
+Run from any project directory — or target opencode's global config instead of the
+current project with `--global`:
+
+```bash
+node ~/code/opencode-papercuts/scripts/install-all.mjs --global
+```
+
+The three steps, each idempotent and safe to re-run:
+
+1. **opencode** (`install:opencode`) — merges `src/index.ts` and `skill/` into the
+   project's `opencode.json` (or `~/.config/opencode/` with `--global`), and `src/tui.tsx`
+   into `.opencode/tui.json` (or `~/.config/opencode/tui.json`). Existing config keys and
+   plugin entries are preserved; JSONC configs are left alone with an error message.
+2. **CLI** (`install:cli`) — links the `papercuts` command into `~/.local/bin`.
+3. **Codex** (`install:codex`) — copies the plugin tree to `~/.codex/plugins/papercuts`
+   and registers it in your personal marketplace.
+
+Then restart opencode and start a new Codex session. The individual steps are also
+exposed as `npm run install:opencode`, `install:cli`, and `install:codex`.
 
 ## Tools
 
@@ -55,7 +87,8 @@ complaints show up in `git diff` and travel with the repo. No server, no telemet
 ## Install for opencode
 
 This project lives on GitHub and is not published to npm — clone it somewhere stable
-and point your config at the file:
+and point your config at the file. From the clone, `npm run install:opencode` does this
+wiring for you (current project; `--global` for `~/.config/opencode`); doing it by hand:
 
 ```bash
 git clone https://github.com/nikkelly/opencode-papercuts.git ~/code/opencode-papercuts
@@ -85,6 +118,22 @@ Restart opencode after changing plugins — config is loaded once at startup.
 The review skill ships in `skill/` — an opencode wrapper whose canonical methodology
 lives in the plugin's skills dir (see [Close the loop](#close-the-loop-review-papercuts));
 add its path under `"skills": {"paths": [...]}`.
+
+### The `papercuts` command
+
+The CLI at `plugin/bin/papercuts.mjs` is zero-dependency and works on any machine with
+Node 23+; it is the Codex-side surface and the terminal surface for opencode. Install it
+once on your PATH (from a clone of this repo):
+
+```bash
+npm run install:cli
+```
+
+This creates `~/.local/bin/papercuts` as a symlink to the repo copy (so `git pull` keeps
+the command fresh — no reinstall needed). Idempotent: re-run any time. It refuses to
+clobber a non-papercuts file at the target; point it elsewhere with `PAPERCUTS_BIN_DIR`.
+`npm run install:codex` runs the same step for you. `npm link` / `npm install -g .` /
+`npx papercuts` also work, via the `bin` entry in package.json.
 
 ### TUI sidebar widget
 
@@ -218,7 +267,9 @@ causes, and resolve what's verified fixed.
 
 > **Codex path hint:** in the snippet above, replace `<plugin-root>` with the actual path.
 > If you installed via `npm run install:codex`, that command prints the exact pen line
-> (resolved to `~/.codex/plugins/papercuts`) for you to paste.
+> (resolved to `~/.codex/plugins/papercuts`) for you to paste. If you ran
+> `npm run install:cli`, the `papercuts` command is on PATH and the short pen works in
+> either host: `papercuts add "<text>" --tag <area> --agent codex`.
 
 ## Development
 

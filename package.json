@@ -12,6 +12,9 @@
     ".": "./src/index.ts",
     "./store": "./plugin/src/store.ts"
   },
+  "bin": {
+    "papercuts": "./plugin/bin/papercuts.mjs"
+  },
   "files": [
     "src",
     "skill",
@@ -33,7 +36,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/*.test.ts\"",
     "eval:behavioral": "node scripts/eval-behavioral.ts",
-    "install:codex": "node scripts/install-codex-plugin.mjs"
+    "install:codex": "node scripts/install-codex-plugin.mjs",
+    "install:cli": "node scripts/install-cli.mjs",
+    "install:opencode": "node scripts/install-opencode.mjs",
+    "install:all": "node scripts/install-all.mjs"
   },
   "engines": {
     "node": ">=22"

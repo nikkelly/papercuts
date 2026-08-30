@@ -150,6 +150,15 @@ function main() {
       "note: could not locate the installed CLI; check `codex plugin list`.\n",
     );
   }
+
+  process.stdout.write("\ninstalling the papercuts command on PATH\n");
+  const link = run(process.execPath, [join(REPO_ROOT, "scripts", "install-cli.mjs")], {
+    stdio: "inherit",
+  });
+  if (link.status !== 0) {
+    process.stdout.write("warning: could not link the papercuts command; see errors above\n");
+  }
+
   process.stdout.write("\nRestart Codex or start a new session to pick up the plugin changes.\n");
 }
 
