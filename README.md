@@ -24,6 +24,8 @@ That's it — the journal is created on first write, no init step.
 | `papercuts_list` | List entries, severity-first then newest, with status/tag/severity filters and limit metadata. |
 | `papercuts_resolve` | Mark a papercut fixed once its durable outcome exists and is verified (unique ID prefix, min 4 hex chars). |
 | `papercuts_remove` | Drop false positives and duplicates from the queue. |
+| `papercuts_mute` | Hide the PAPERCUTS section in the opencode TUI sidebar for this repository until unmuted; the journal keeps recording. |
+| `papercuts_unmute` | Show the PAPERCUTS section again after a mute. |
 
 Every surface emits the same envelope: success is `{"ok":true,"data":{...}}`, failure is
 `{"ok":false,"error":{"code","message"[,"candidates"]}}` (the opencode tools throw errors
@@ -38,8 +40,9 @@ complaints show up in `git diff` and travel with the repo. No server, no telemet
 - **Discovery order**: `PAPERCUTS_FILE` env → `<git root>/.papercuts.jsonl` → the current
   directory when outside any repository. Papercuts are repository-specific friction;
   there is deliberately no global log, so complaints never mix across codebases.
-- **Never rewrites history**: resolve/remove are appended events; the fold tolerates torn
-  final lines, malformed lines, duplicates, and orphan events with surfaced warnings.
+- **Never rewrites history**: resolve/remove/mute/unmute are appended events; the fold
+  tolerates torn final lines, malformed lines, duplicates, and orphan events with
+  surfaced warnings.
 - **Content-addressed IDs** (`pc_` + 12 hex of SHA-256 over text/severity/tags)
   make `add` duplicate-safe across sessions and across hosts: the same friction filed
   twice becomes one entry, attributed to the first filer.
@@ -94,6 +97,12 @@ Color escalates with friction — muted normally, warning at three filed today (
 open majors), error while any blocker is open. Collapse works like the built-in Todo
 section: click the title to toggle; the chevron appears only above two open entries.
 
+**Muting.** When the section gets noisy you can hide it without stopping the journal:
+run the `Papercuts: Toggle sidebar` command (command palette, or `ctrl+x p`). A mute is
+an append-only `mute`/`unmute` event in the journal, so the state is per-repository,
+survives restarts, and is shared with the Codex CLI (`papercuts mute|unmute|toggle|status`).
+Muted sections stay hidden even while agents keep filing.
+
 Enable it by listing the TUI module in `.opencode/tui.json` (or
 `~/.config/opencode/tui.json` for everywhere):
 
@@ -109,6 +118,9 @@ Enable it by listing the TUI module in `.opencode/tui.json` (or
 The same journal works in Codex through a skills-based plugin — no MCP server, no npm.
 The plugin bundles two skills (`papercuts` for capture, `review-papercuts` for triage)
 and a zero-dependency CLI (`bin/papercuts.mjs`) that both hosts' agents can drive.
+Beyond `add`/`list`/`resolve`/`remove`, the CLI shares the TUI mute state:
+`papercuts mute|unmute|toggle` hide or show the opencode sidebar section for the
+repository, and `papercuts status` reports it.
 
 Codex reads `AGENTS.md` natively; combined with the bundled skills it will file papercuts
 as it works. Entries carry agent attribution (`--agent codex`) so you can tell which host

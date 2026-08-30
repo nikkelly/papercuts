@@ -1,13 +1,25 @@
 #!/usr/bin/env node
 import { errorEnvelope, exitCodeFor, ok } from "../src/envelope.ts";
-import { PapercutsError, addPapercut, listPapercuts, removePapercut, resolvePapercut } from "../src/store.ts";
+import {
+  PapercutsError,
+  addPapercut,
+  listPapercuts,
+  papercutStatus,
+  removePapercut,
+  resolvePapercut,
+  setMuted,
+} from "../src/store.ts";
 
 function usage() {
   console.error(`Usage:
   papercuts add <text> [--tag TAG] [--severity minor|major|blocker] [--cmd CMD] [--exit N] [--agent NAME]
   papercuts list [--status open|resolved|all] [--tag TAG] [--severity SEVERITY] [--limit N] [--agent NAME]
   papercuts resolve <id-prefix> [--note NOTE] [--agent NAME]
-  papercuts remove <id-prefix> [--agent NAME]`);
+  papercuts remove <id-prefix> [--agent NAME]
+  papercuts mute [--agent NAME]
+  papercuts unmute [--agent NAME]
+  papercuts toggle [--agent NAME]
+  papercuts status`);
 }
 
 function parseFlags(args, allowed) {
@@ -127,6 +139,27 @@ function main(argv = process.argv.slice(2)) {
         throw new PapercutsError("invalid_argument", "remove takes exactly one ID prefix");
       }
       return removePapercut({ idPrefix: positionals[0], agent: flags.agent, startDirectory: process.cwd() });
+    }
+    case "mute":
+    case "unmute": {
+      const { flags } = parseFlags(rest, ["agent"]);
+      return setMuted({
+        muted: command === "mute",
+        agent: flags.agent,
+        startDirectory: process.cwd(),
+      });
+    }
+    case "toggle": {
+      const { flags } = parseFlags(rest, ["agent"]);
+      return setMuted({
+        muted: !papercutStatus({ startDirectory: process.cwd() }).muted,
+        agent: flags.agent,
+        startDirectory: process.cwd(),
+      });
+    }
+    case "status": {
+      parseFlags(rest, []);
+      return papercutStatus({ startDirectory: process.cwd() });
     }
     default:
       usage();

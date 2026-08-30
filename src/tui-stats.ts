@@ -55,7 +55,8 @@ export function level(stats: Stats): StatsLevel {
   return "muted";
 }
 
-export function isVisible(stats: Stats): boolean {
+export function isVisible(stats: Stats, muted = false): boolean {
+  if (muted) return false;
   return stats.open > 0 || stats.openedToday > 0 || stats.resolvedToday > 0;
 }
 

@@ -39,6 +39,23 @@ node <plugin-root>/bin/papercuts.mjs remove <id-prefix> --agent codex   # false 
 
 Resolve only after the durable outcome exists and has been verified. For full triage methodology follow the `review-papercuts` skill.
 
+## Muting the sidebar
+
+The opencode TUI shows a PAPERCUTS section in the sidebar while friction is open. When
+the user asks to quiet it (or you are told to toggle it), the state is per-repository
+and shared through the journal:
+
+```bash
+node <plugin-root>/bin/papercuts.mjs status      # is the section muted?
+node <plugin-root>/bin/papercuts.mjs mute        # hide it; journal keeps recording
+node <plugin-root>/bin/papercuts.mjs unmute      # show it again
+node <plugin-root>/bin/papercuts.mjs toggle      # flip whichever way it is
+```
+
+Muting is an operator preference, not evidence — only run these when the user asks.
+Attribution: `--agent codex` is accepted here too, but the default is fine for mute
+events.
+
 ## Output contract
 
 Every command prints one JSON envelope on stdout: `{"ok":true,"data":...}` on success, `{"ok":false,"error":{"code","message"}}` on failure (with `candidates` listed when an ID prefix is ambiguous) (exit code 1 invalid input or usage, 2 not found or ambiguous ID prefix, 3 I/O error). Empty results are success.

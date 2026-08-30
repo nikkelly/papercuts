@@ -6,9 +6,16 @@ import test from "node:test";
 
 import papercutsPlugin from "../src/index.ts";
 
-test("plugin registers all four tools", async () => {
+test("plugin registers all six tools", async () => {
   const hooks = await papercutsPlugin();
-  const names = ["papercuts_add", "papercuts_list", "papercuts_resolve", "papercuts_remove"] as const;
+  const names = [
+    "papercuts_add",
+    "papercuts_list",
+    "papercuts_resolve",
+    "papercuts_remove",
+    "papercuts_mute",
+    "papercuts_unmute",
+  ] as const;
   for (const name of names) {
     assert.ok(hooks.tool?.[name], `missing tool: ${name}`);
   }
@@ -71,6 +78,38 @@ test("tool execution falls back to process.cwd() when context paths are empty", 
     assert.equal(listed.data.count, 1);
   } finally {
     process.chdir(previousCwd);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("mute and unmute tools write journal events for the session repository", async () => {
+  const hooks = await papercutsPlugin();
+  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-plugin-"));
+  mkdirSync(join(directory, ".git"), { recursive: true });
+  try {
+    const context = {
+      sessionID: "t",
+      messageID: "m",
+      agent: "build",
+      directory,
+      worktree: "",
+      abort: new AbortController().signal,
+      metadata() {},
+      async ask() {},
+    } as never;
+    const muted = JSON.parse(
+      (await hooks.tool!.papercuts_mute.execute({}, context)) as string,
+    );
+    assert.equal(muted.ok, true);
+    assert.equal(muted.data.changed, true);
+    assert.equal(muted.data.muted, true);
+
+    const unmuted = JSON.parse(
+      (await hooks.tool!.papercuts_unmute.execute({}, context)) as string,
+    );
+    assert.equal(unmuted.data.muted, false);
+    assert.equal(unmuted.data.event?.kind, "unmute");
+  } finally {
     rmSync(directory, { recursive: true, force: true });
   }
 });

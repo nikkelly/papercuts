@@ -179,3 +179,31 @@ test("tool argument schemas reject malformed input before execution", () => {
   assert.equal(listSchema.safeParse({ status: "archived" }).success, false);
   assert.equal(listSchema.safeParse({ limit: 5 }).success, true);
 });
+
+test("mute and unmute through the tool surface fold back to open after unmute", async () => {
+  const directory = createTemporaryRepository();
+  try {
+    const context = makeContext(directory);
+    const muted = JSON.parse(
+      await tools.papercuts_mute.execute({}, context) as string,
+    );
+    assert.equal(muted.ok, true);
+    assert.equal(muted.data.changed, true);
+    assert.equal(muted.data.muted, true);
+    assert.equal(muted.data.event.kind, "mute");
+
+    const stillMuted = JSON.parse(
+      await tools.papercuts_mute.execute({}, context) as string,
+    );
+    assert.equal(stillMuted.data.changed, false);
+
+    const unmuted = JSON.parse(
+      await tools.papercuts_unmute.execute({}, context) as string,
+    );
+    assert.equal(unmuted.data.muted, false);
+    assert.equal(unmuted.data.changed, true);
+    assert.equal(unmuted.data.event.kind, "unmute");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

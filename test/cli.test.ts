@@ -236,6 +236,79 @@ test("cli resolve and remove attribute their events to --agent when passed", () 
   }
 });
 
+test("cli mute and unmute flip the status and record the agent", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const muted = envelope(runCli(directory, "mute", "--agent", "codex"));
+    assert.equal(muted.changed, true);
+    assert.equal(muted.muted, true);
+    assert.equal(muted.event.kind, "mute");
+
+    const statusAfterMute = envelope(runCli(directory, "status"));
+    assert.equal(statusAfterMute.muted, true);
+    assert.equal(statusAfterMute.exists, true);
+
+    const unmuted = envelope(runCli(directory, "unmute"));
+    assert.equal(unmuted.changed, true);
+    assert.equal(unmuted.muted, false);
+    assert.equal(envelope(runCli(directory, "status")).muted, false);
+
+    const events = readFileSync(join(directory, ".papercuts.jsonl"), "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.equal(events[0].agent, "codex");
+    assert.equal(events[1].agent, "opencode");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli toggle flips between muted and unmuted", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const first = envelope(runCli(directory, "toggle"));
+    assert.equal(first.changed, true);
+    assert.equal(first.muted, true);
+    const second = envelope(runCli(directory, "toggle"));
+    assert.equal(second.changed, true);
+    assert.equal(second.muted, false);
+    const third = envelope(runCli(directory, "toggle"));
+    assert.equal(third.muted, true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli mute is idempotent and status on a fresh repository is unmuted", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const status = envelope(runCli(directory, "status"));
+    assert.equal(status.muted, false);
+    assert.equal(status.exists, false);
+
+    envelope(runCli(directory, "mute"));
+    const again = envelope(runCli(directory, "mute"));
+    assert.equal(again.changed, false);
+    assert.ok(again.warnings.some((warning: string) => warning.includes("already muted")));
+    assert.equal(readFileSync(join(directory, ".papercuts.jsonl"), "utf8").trim().split("\n").length, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli rejects flags on status and unknown commands without side effects", () => {
+  const directory = createTemporaryDirectory();
+  try {
+    const withFlag = runCli(directory, "status", "--agent", "codex");
+    assert.equal(withFlag.status, 1);
+    assert.equal(JSON.parse(withFlag.stdout).error.code, "invalid_argument");
+    assert.equal(existsSync(join(directory, ".papercuts.jsonl")), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function writeRawJournal(directory: string, records: Array<Record<string, unknown>>) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(join(directory, ".papercuts.jsonl"), records.map((record) => JSON.stringify(record)).join("\n") + "\n");

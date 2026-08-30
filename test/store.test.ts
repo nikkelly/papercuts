@@ -10,8 +10,10 @@ import {
   computeId,
   discoverLogPath,
   listPapercuts,
+  papercutStatus,
   removePapercut,
   resolvePapercut,
+  setMuted,
 } from "../plugin/src/store.ts";
 
 const FIXTURE_TS = new Date("2026-08-01T12:00:00.000Z");
@@ -506,6 +508,112 @@ test("resolve cannot target an already-removed papercut and remove stays idempot
     const secondRemove = removePapercut({ idPrefix: added.record.id, startDirectory: directory });
     assert.equal(secondRemove.changed, false);
     assert.ok(secondRemove.warnings.some((warning) => warning.includes("already removed")));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("setMuted appends a mute event and status reports it", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const result = setMuted({ muted: true, startDirectory: directory, now: FIXTURE_TS });
+    assert.equal(result.changed, true);
+    assert.equal(result.muted, true);
+    assert.equal(result.event?.kind, "mute");
+    assert.equal(result.event?.ts, "2026-08-01T12:00:00.000Z");
+    const record = JSON.parse(readFile(directory).trim());
+    assert.equal(record.kind, "mute");
+    assert.equal(record.agent, "opencode");
+
+    const status = papercutStatus({ startDirectory: directory });
+    assert.equal(status.muted, true);
+    assert.equal(status.exists, true);
+    assert.equal(status.file, logPath(directory));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("mute state folds last-wins across mute and unmute events", () => {
+  const directory = createTemporaryRepository();
+  try {
+    appendRaw(directory, [
+      JSON.stringify({ kind: "unmute", ts: "2026-08-01T00:00:00.000Z", agent: "opencode" }),
+      JSON.stringify({ kind: "mute", ts: "2026-08-02T00:00:00.000Z", agent: "opencode" }),
+    ].join("\n"));
+    assert.equal(papercutStatus({ startDirectory: directory }).muted, true);
+    appendRaw(directory, JSON.stringify({ kind: "unmute", ts: "2026-08-03T00:00:00.000Z", agent: "opencode" }));
+    assert.equal(papercutStatus({ startDirectory: directory }).muted, false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("setMuted is idempotent and does not append a second event in the same state", () => {
+  const directory = createTemporaryRepository();
+  try {
+    setMuted({ muted: true, startDirectory: directory });
+    const again = setMuted({ muted: true, startDirectory: directory });
+    assert.equal(again.changed, false);
+    assert.equal(again.muted, true);
+    assert.ok(again.warnings.some((warning) => warning.includes("already muted")));
+    assert.equal(readFile(directory).trim().split("\n").length, 1);
+
+    const unmuted = setMuted({ muted: false, startDirectory: directory });
+    assert.equal(unmuted.changed, true);
+    assert.equal(unmuted.event?.kind, "unmute");
+    const againUnmuted = setMuted({ muted: false, startDirectory: directory });
+    assert.equal(againUnmuted.changed, false);
+    assert.ok(againUnmuted.warnings.some((warning) => warning.includes("already unmuted")));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("setMuted creates the journal on first write and attributes the agent", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const result = setMuted({ muted: true, startDirectory: directory, agent: "tui" });
+    assert.equal(result.changed, true);
+    assert.equal(existsSync(logPath(directory)), true);
+    const record = JSON.parse(readFile(directory).trim());
+    assert.equal(record.agent, "tui");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("papercutStatus on a missing journal reports unmuted without creating a file", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const status = papercutStatus({ startDirectory: directory });
+    assert.equal(status.muted, false);
+    assert.equal(status.exists, false);
+    assert.equal(existsSync(logPath(directory)), false);
+    assert.ok(status.warnings.some((warning) => warning.includes("no papercuts file")));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("fold treats malformed mute events as malformed lines and keeps the prior state", () => {
+  const directory = createTemporaryRepository();
+  try {
+    appendRaw(directory, JSON.stringify({ kind: "mute", ts: "2026-08-01T00:00:00.000Z", agent: "opencode" }));
+    appendRaw(directory, '{"kind":"mute"}');
+    const status = papercutStatus({ startDirectory: directory });
+    assert.equal(status.muted, true);
+    assert.ok(status.warnings.some((warning) => /malformed lines?$/.test(warning)));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("fold defaults to unmuted when the journal has no mute events", () => {
+  const directory = createTemporaryRepository();
+  try {
+    addPapercut({ text: "plain cut", startDirectory: directory, now: FIXTURE_TS });
+    assert.equal(papercutStatus({ startDirectory: directory }).muted, false);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

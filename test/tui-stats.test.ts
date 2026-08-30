@@ -245,6 +245,23 @@ test("isVisible is false only when nothing is open and nothing happened today", 
   assert.equal(isVisible(resolvedToday), true);
 });
 
+test("isVisible returns false when the widget is muted even with open friction", () => {
+  const busy = computeStats(
+    {
+      items: [
+        item({ cut: { severity: "blocker" } }),
+        item({ cut: { id: "pc_00000000000b" } }),
+      ],
+    },
+    NOW,
+  );
+  assert.equal(isVisible(busy), true);
+  assert.equal(isVisible(busy, false), true);
+  assert.equal(isVisible(busy, true), false);
+  const empty = computeStats({ items: [] }, NOW);
+  assert.equal(isVisible(empty, true), false);
+});
+
 test("summarySegments pluralizes and omits zero segments", () => {
   const single = computeStats(
     { items: [item({ cut: { severity: "blocker" } })] },

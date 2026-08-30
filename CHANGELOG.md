@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Sidebar mute: `papercuts_mute`/`papercuts_unmute` tools, `papercuts
+  mute|unmute|toggle|status` CLI commands, and a `Papercuts: Toggle sidebar` TUI
+  command (keybind `ctrl+x p`) hide and show the sidebar widget via append-only
+  `mute`/`unmute` journal events — per-repository, shared across hosts, last event wins.
 - Shared envelope contract (`plugin/src/envelope.ts`): both hosts now emit
   `{"ok":true,"data":...}` on success and `{"ok":false,"error":{"code","message"[,"candidates"]}}`
   on failure; the opencode tools throw errors (rendered natively) while the CLI maps error

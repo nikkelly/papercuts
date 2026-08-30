@@ -3,7 +3,7 @@ import { readFileSync, watch, type FSWatcher } from "node:fs";
 import { basename, dirname } from "node:path";
 import type { TuiPluginApi, TuiPluginModule, TuiTheme } from "@opencode-ai/plugin/tui";
 import { createSignal, For, Show } from "solid-js";
-import { discoverLogPath, foldBytes } from "../plugin/src/store.ts";
+import { discoverLogPath, foldBytes, setMuted } from "../plugin/src/store.ts";
 import {
   collapsible,
   computeStats,
@@ -19,9 +19,15 @@ const WATCH_DEBOUNCE_MS = 150;
 
 type SlotContext = { theme: TuiTheme };
 
-function readStats(journalPath: string): Stats | null {
+interface JournalView {
+  stats: Stats;
+  muted: boolean;
+}
+
+function readView(journalPath: string): JournalView | null {
   try {
-    return computeStats(foldBytes(readFileSync(journalPath)));
+    const folded = foldBytes(readFileSync(journalPath));
+    return { stats: computeStats(folded), muted: folded.muted };
   } catch {
     return null;
   }
@@ -38,9 +44,9 @@ export const tui = async (api: TuiPluginApi) => {
   const root = api.state.path.worktree || api.state.path.directory;
   const journalPath = discoverLogPath(root).path;
 
-  const [stats, setStats] = createSignal<Stats | null>(readStats(journalPath));
+  const [view, setView] = createSignal<JournalView | null>(readView(journalPath));
 
-  const refresh = () => setStats(readStats(journalPath));
+  const refresh = () => setView(readView(journalPath));
 
   let debounce: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = () => {
@@ -60,7 +66,42 @@ export const tui = async (api: TuiPluginApi) => {
   const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
   interval.unref?.();
 
+  const toggle = () => {
+    try {
+      const muted = !(view()?.muted ?? false);
+      setMuted({ muted, startDirectory: root, agent: "tui" });
+      refresh();
+      api.ui.toast({
+        variant: muted ? "warning" : "success",
+        title: "Papercuts",
+        message: muted
+          ? "Sidebar section hidden until unmuted"
+          : "Sidebar section visible",
+      });
+    } catch (error) {
+      api.ui.toast({
+        variant: "error",
+        title: "Papercuts",
+        message: String(error),
+      });
+    }
+  };
+
+  const disposeLayer = api.keymap.registerLayer({
+    commands: [
+      {
+        name: "papercuts.toggle",
+        title: "Papercuts: Toggle sidebar",
+        desc: "Show or hide the PAPERCUTS section in the sidebar",
+        category: "Papercuts",
+        run: () => toggle(),
+      },
+    ],
+    bindings: [{ key: "<leader>p", cmd: "papercuts.toggle" }],
+  });
+
   const dispose = () => {
+    disposeLayer();
     if (debounce !== undefined) clearTimeout(debounce);
     clearInterval(interval);
     watcher?.close();
@@ -78,11 +119,11 @@ export const tui = async (api: TuiPluginApi) => {
     order: 150,
     slots: {
       sidebar_content: (ctx) => {
-        const current = stats();
-        if (!current || !isVisible(current)) return null;
-        const color = themeColor(ctx, level(current));
-        const lines = formatLines(current);
-        const canCollapse = collapsible(current);
+        const current = view();
+        if (!current || !isVisible(current.stats, current.muted)) return null;
+        const color = themeColor(ctx, level(current.stats));
+        const lines = formatLines(current.stats);
+        const canCollapse = collapsible(current.stats);
         return (
           <box>
             <box flexDirection="row" gap={1} onMouseDown={() => canCollapse && setOpen((x) => !x)}>

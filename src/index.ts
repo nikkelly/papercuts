@@ -9,6 +9,7 @@ import {
   listPapercuts,
   removePapercut,
   resolvePapercut,
+  setMuted,
 } from "../plugin/src/store.ts";
 
 function startDirectory(context: { worktree?: string; directory?: string }): string {
@@ -130,6 +131,26 @@ export const papercutsPlugin = (async () => ({
             idPrefix: args.id,
             startDirectory: startDirectory(context),
           }),
+        );
+      },
+    }),
+    papercuts_mute: tool({
+      description:
+        "Hide the PAPERCUTS section in the opencode TUI sidebar for this repository until unmuted. Use when the user asks to quiet papercut reminders; the journal keeps recording.",
+      args: {},
+      async execute(_args, context) {
+        return run(() =>
+          setMuted({ muted: true, startDirectory: startDirectory(context) }),
+        );
+      },
+    }),
+    papercuts_unmute: tool({
+      description:
+        "Show the PAPERCUTS section in the opencode TUI sidebar again after a papercuts_mute.",
+      args: {},
+      async execute(_args, context) {
+        return run(() =>
+          setMuted({ muted: false, startDirectory: startDirectory(context) }),
         );
       },
     }),

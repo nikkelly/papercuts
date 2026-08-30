@@ -51,6 +51,8 @@ export interface ListItem {
 export interface FoldResult {
   items: ListItem[];
   removedIds: Set<string>;
+  /** Last mute/unmute event wins; absent events mean unmuted. */
+  muted: boolean;
   warnings: string[];
 }
 
@@ -168,6 +170,8 @@ export function foldBytes(bytes: Buffer): FoldResult {
   const removes = new Map<string, string>();
   const counts = { torn: 0, malformed: 0, unknown: 0, duplicateCut: 0, duplicateResolve: 0, orphan: 0 };
 
+  let muted = false;
+
   let completeLength = bytes.length;
   if (bytes.length > 0 && bytes[bytes.length - 1] !== 0x0a) {
     counts.torn += 1;
@@ -233,6 +237,16 @@ export function foldBytes(bytes: Buffer): FoldResult {
         removes.set(id, ts);
         break;
       }
+      case "mute":
+      case "unmute": {
+        const ts = typeof record.ts === "string" ? record.ts : "";
+        if (Number.isNaN(Date.parse(ts))) {
+          counts.malformed += 1;
+          break;
+        }
+        muted = record.kind === "mute";
+        break;
+      }
       default:
         counts.unknown += 1;
     }
@@ -278,7 +292,7 @@ export function foldBytes(bytes: Buffer): FoldResult {
   warn(counts.duplicateResolve, "duplicate resolve");
   warn(counts.orphan, "orphan resolve");
 
-  return { items, removedIds, warnings };
+  return { items, removedIds, muted, warnings };
 }
 
 function parseCut(record: Record<string, unknown>): CutRecord | null {
@@ -571,4 +585,73 @@ export function removePapercut(options: RemoveOptions): {
   };
   appendLine(path, JSON.stringify(event), prior);
   return { changed: true, id, warnings: [] };
+}
+
+export interface MuteOptions {
+  muted: boolean;
+  agent?: string;
+  startDirectory: string;
+  exists?: (path: string) => boolean;
+  now?: Date;
+  env?: NodeJS.ProcessEnv;
+}
+
+export interface MuteEvent {
+  kind: "mute" | "unmute";
+  ts: string;
+  agent: string;
+}
+
+export interface MuteResult {
+  changed: boolean;
+  muted: boolean;
+  event: MuteEvent | null;
+  warnings: string[];
+}
+
+export function setMuted(options: MuteOptions): MuteResult {
+  const { path } = discoverLogPath(options.startDirectory, options.env, options.exists);
+  const prior = readLogBytes(path);
+  const current = prior ? foldBytes(prior).muted : false;
+  if (current === options.muted) {
+    return {
+      changed: false,
+      muted: current,
+      event: null,
+      warnings: [`papercuts are already ${current ? "muted" : "unmuted"}`],
+    };
+  }
+  const event: MuteEvent = {
+    kind: options.muted ? "mute" : "unmute",
+    ts: nowIso(options.now),
+    agent: effectiveAgent(options),
+  };
+  appendLine(path, JSON.stringify(event), prior);
+  return { changed: true, muted: options.muted, event, warnings: [] };
+}
+
+export interface StatusOptions {
+  startDirectory: string;
+  exists?: (path: string) => boolean;
+  env?: NodeJS.ProcessEnv;
+}
+
+export function papercutStatus(options: StatusOptions): {
+  muted: boolean;
+  file: string;
+  exists: boolean;
+  warnings: string[];
+} {
+  const { path } = discoverLogPath(options.startDirectory, options.env, options.exists);
+  const prior = readLogBytes(path);
+  if (!prior) {
+    return {
+      muted: false,
+      file: path,
+      exists: false,
+      warnings: ["no papercuts file yet; mute or add creates it"],
+    };
+  }
+  const folded = foldBytes(prior);
+  return { muted: folded.muted, file: path, exists: true, warnings: folded.warnings };
 }
