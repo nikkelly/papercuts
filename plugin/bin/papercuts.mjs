@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { errorEnvelope, exitCodeFor, ok } from "../src/envelope.ts";
 import { PapercutsError, addPapercut, listPapercuts, removePapercut, resolvePapercut } from "../src/store.ts";
 
 function usage() {
@@ -7,15 +8,6 @@ function usage() {
   papercuts list [--status open|resolved|all] [--tag TAG] [--severity SEVERITY] [--limit N] [--agent NAME]
   papercuts resolve <id-prefix> [--note NOTE] [--agent NAME]
   papercuts remove <id-prefix> [--agent NAME]`);
-}
-
-function fail(code, message, candidates) {
-  const error = { code, message };
-  if (candidates !== undefined) {
-    error.candidates = candidates;
-  }
-  console.log(JSON.stringify({ ok: false, error }));
-  process.exitCode = code === "not_found" || code === "ambiguous_id" ? 2 : code === "io_error" ? 3 : 1;
 }
 
 function parseFlags(args, allowed) {
@@ -79,7 +71,7 @@ function integer(value, label) {
 }
 
 function output(data) {
-  console.log(JSON.stringify({ ok: true, data }));
+  console.log(JSON.stringify(ok(data)));
 }
 
 function main(argv = process.argv.slice(2)) {
@@ -138,20 +130,14 @@ function main(argv = process.argv.slice(2)) {
     }
     default:
       usage();
-      fail("usage", `unknown or missing command '${command ?? ""}'; see usage on stderr`);
-      return null;
+      throw new PapercutsError("usage", `unknown or missing command '${command ?? ""}'; see usage on stderr`);
   }
 }
 
 try {
-  const result = main();
-  if (result !== null) {
-    output(result);
-  }
+  output(main());
 } catch (error) {
-  if (error instanceof PapercutsError) {
-    fail(error.code, error.message, error.candidates);
-  } else {
-    fail("io_error", String(error));
-  }
+  const envelope = errorEnvelope(error);
+  console.log(JSON.stringify(envelope));
+  process.exitCode = exitCodeFor(envelope.error.code);
 }

@@ -65,7 +65,11 @@ function ensureMarketplaceFile() {
     }
   }
   const merged = mergeMarketplace(existing);
-  if (!merged.name) merged.name = MARKETPLACE_NAME;
+  // The installer owns this home-dir manifest for this marketplace, so always force the
+  // name: registration and `papercuts@${MARKETPLACE_NAME}` reinstall below depend on it,
+  // and a pre-existing manifest with a different name (e.g. "nikkelly-papercuts") would
+  // otherwise make the install fail or install under the wrong marketplace.
+  merged.name = MARKETPLACE_NAME;
   if (!merged.interface) merged.interface = { displayName: "Personal plugins" };
   writeFileSync(MARKETPLACE_FILE, JSON.stringify(merged, null, 2) + "\n");
 }

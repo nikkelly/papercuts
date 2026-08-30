@@ -32,7 +32,6 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"test/*.test.ts\"",
-    "eval": "node scripts/eval.ts",
     "eval:behavioral": "node scripts/eval-behavioral.ts",
     "install:codex": "node scripts/install-codex-plugin.mjs"
   },

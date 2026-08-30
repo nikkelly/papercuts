@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Shared envelope contract (`plugin/src/envelope.ts`): both hosts now emit
+  `{"ok":true,"data":...}` on success and `{"ok":false,"error":{"code","message"[,"candidates"]}}`
+  on failure; the opencode tools throw errors (rendered natively) while the CLI maps error
+  codes to exit codes (1 invalid/usage, 2 not found/ambiguous, 3 I/O).
+- Typechecking now covers the whole tree: `tsconfig.json` includes `plugin/src/`,
+  `scripts/`, and `test/` (previously hidden implicit-any errors fixed).
+- The script-based eval harness (`scripts/eval.ts`) was folded into `npm test` as
+  `test/eval.test.ts`; the tool-surface scenarios run as node:test blocks and the
+  `npm run eval` script was removed from CI and package.json.
+- `review-papercuts` methodology consolidated: `plugin/skills/review-papercuts/SKILL.md`
+  is the canonical single source shared by both hosts; `skill/review-papercuts/SKILL.md`
+  is a thin opencode wrapper pointing at it.
+- Marketplace installer fix: `scripts/install-codex-plugin.mjs` now always forces the
+  home-dir manifest name to `personal` instead of only when absent, so a pre-existing
+  manifest with a different name no longer breaks registration/reinstall; new
+  `marketplaceEntry(mode)` builder in `scripts/codex-marketplace.mjs` covers the
+  git-subdir shape too.
 - TUI sidebar widget (`src/tui.tsx`): renders open papercut count with today trend and
   severity breakdown in the right sidebar next to Context/LSP; theme-colored escalation
   (error for open blockers, warning at ≥3 opened today or ≥2 open majors); collapse

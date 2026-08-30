@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -14,7 +14,7 @@ function createTemporaryRepository() {
   return directory;
 }
 
-function runCli(directory, ...args) {
+function runCli(directory: string, ...args: string[]) {
   return spawnSync(process.execPath, [CLI_PATH, ...args], {
     cwd: directory,
     encoding: "utf8",
@@ -22,7 +22,7 @@ function runCli(directory, ...args) {
   });
 }
 
-function envelope(result) {
+function envelope(result: SpawnSyncReturns<string>) {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.ok, true);
@@ -70,7 +70,7 @@ test("cli add is duplicate-safe across invocations", () => {
     envelope(runCli(directory, "add", "flaky lint rule"));
     const second = envelope(runCli(directory, "add", "flaky lint rule"));
     assert.equal(second.changed, false);
-    assert.ok(second.warnings.some((warning) => warning.includes("duplicate")));
+    assert.ok(second.warnings.some((warning: string) => warning.includes("duplicate")));
     assert.equal(readFileSync(join(directory, ".papercuts.jsonl"), "utf8").trim().split("\n").length, 1);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -92,7 +92,7 @@ test("cli list reports open entries severity-first and supports status filters",
     assert.equal(open.total, 1);
     const all = envelope(runCli(directory, "list", "--status", "all"));
     assert.equal(all.total, 2);
-    assert.equal(all.items.find((item) => item.cut.id === resolvedId).status, "resolved");
+    assert.equal(all.items.find((item: { cut: { id: string } }) => item.cut.id === resolvedId).status, "resolved");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -188,7 +188,7 @@ test("cli resolve of an already-resolved entry is idempotent with exit 0", () =>
     envelope(runCli(directory, "resolve", added.record.id));
     const again = envelope(runCli(directory, "resolve", added.record.id));
     assert.equal(again.changed, false);
-    assert.ok(again.warnings.some((warning) => warning.includes("already resolved")));
+    assert.ok(again.warnings.some((warning: string) => warning.includes("already resolved")));
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -236,7 +236,7 @@ test("cli resolve and remove attribute their events to --agent when passed", () 
   }
 });
 
-function writeRawJournal(directory, records) {
+function writeRawJournal(directory: string, records: Array<Record<string, unknown>>) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(join(directory, ".papercuts.jsonl"), records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 }

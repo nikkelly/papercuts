@@ -2,6 +2,7 @@ import type { Plugin } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
 import { resolve } from "node:path";
 import { z } from "zod";
+import { ok } from "../plugin/src/envelope.ts";
 import {
   PapercutsError,
   addPapercut,
@@ -25,6 +26,15 @@ function fail(error: unknown): never {
     throw error;
   }
   throw new PapercutsError("io_error", String(error));
+}
+
+async function run(execute: () => unknown): Promise<string> {
+  try {
+    const result = await execute();
+    return JSON.stringify(ok(result), null, 2);
+  } catch (error) {
+    return fail(error);
+  }
 }
 
 export const papercutsPlugin = (async () => ({
@@ -52,19 +62,16 @@ export const papercutsPlugin = (async () => ({
         exitCode: z.number().optional().describe("Exit code of the failed command"),
       },
       async execute(args, context) {
-        try {
-          const result = addPapercut({
+        return run(() =>
+          addPapercut({
             text: args.text,
             tag: args.tag,
             severity: args.severity,
             cmd: args.cmd,
             exitCode: args.exitCode,
             startDirectory: startDirectory(context),
-          });
-          return JSON.stringify({ ok: true, ...result }, null, 2);
-        } catch (error) {
-          return fail(error);
-        }
+          }),
+        );
       },
     }),
     papercuts_list: tool({
@@ -83,18 +90,15 @@ export const papercutsPlugin = (async () => ({
         limit: z.number().optional().describe("Maximum entries returned (default 20)"),
       },
       async execute(args, context) {
-        try {
-          const result = listPapercuts({
+        return run(() =>
+          listPapercuts({
             status: args.status,
             tag: args.tag,
             severity: args.severity,
             limit: args.limit,
             startDirectory: startDirectory(context),
-          });
-          return JSON.stringify({ ok: true, ...result }, null, 2);
-        } catch (error) {
-          return fail(error);
-        }
+          }),
+        );
       },
     }),
     papercuts_resolve: tool({
@@ -105,16 +109,13 @@ export const papercutsPlugin = (async () => ({
         note: z.string().optional().describe("Where or how it was resolved"),
       },
       async execute(args, context) {
-        try {
-          const result = resolvePapercut({
+        return run(() =>
+          resolvePapercut({
             idPrefix: args.id,
             note: args.note,
             startDirectory: startDirectory(context),
-          });
-          return JSON.stringify({ ok: true, ...result }, null, 2);
-        } catch (error) {
-          return fail(error);
-        }
+          }),
+        );
       },
     }),
     papercuts_remove: tool({
@@ -124,15 +125,12 @@ export const papercutsPlugin = (async () => ({
         id: z.string().describe("Papercut ID prefix, e.g. pc_9f2c41 or 9f2c41"),
       },
       async execute(args, context) {
-        try {
-          const result = removePapercut({
+        return run(() =>
+          removePapercut({
             idPrefix: args.id,
             startDirectory: startDirectory(context),
-          });
-          return JSON.stringify({ ok: true, ...result }, null, 2);
-        } catch (error) {
-          return fail(error);
-        }
+          }),
+        );
       },
     }),
   },

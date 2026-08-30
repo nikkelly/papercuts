@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { mergeMarketplace, PAPERCUTS_ENTRY } from "../scripts/codex-marketplace.mjs";
+import { marketplaceEntry, mergeMarketplace, PAPERCUTS_ENTRY } from "../scripts/codex-marketplace.mjs";
 
 test("mergeMarketplace seeds a brand-new marketplace file shape", () => {
   const merged = mergeMarketplace(undefined);
@@ -31,8 +31,8 @@ test("mergeMarketplace preserves unrelated plugin entries", () => {
   };
   const merged = mergeMarketplace(existing);
   assert.equal(merged.plugins.length, 2);
-  assert.equal(merged.plugins[0].name, "other-plugin");
-  assert.equal(merged.plugins[1].name, "papercuts");
+  assert.equal(merged.plugins[0]!.name, "other-plugin");
+  assert.equal(merged.plugins[1]!.name, "papercuts");
 });
 
 test("mergeMarketplace preserves unknown top-level keys", () => {
@@ -41,9 +41,26 @@ test("mergeMarketplace preserves unknown top-level keys", () => {
   assert.equal(merged.extraKey, "keep-me");
 });
 
-test("mergeMarketplace replaces an existing papercuts entry", () => {
+test("marketplaceEntry('local') is the current PAPERCUTS_ENTRY", () => {
+  assert.deepEqual(marketplaceEntry("local"), PAPERCUTS_ENTRY);
+});
+
+test("marketplaceEntry('git-subdir') mirrors the tracked repo manifest entry", () => {
+  assert.deepEqual(marketplaceEntry("git-subdir"), {
+    name: "papercuts",
+    source: {
+      source: "git-subdir",
+      url: "https://github.com/nikkelly/opencode-papercuts.git",
+      path: "./plugin",
+    },
+    policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+    category: "Developer tools",
+  });
+});
+
+test("mergeMarketplace replaces an existing papercuts entry regardless of manifest name", () => {
   const existing = {
-    name: "personal",
+    name: "nikkelly-papercuts",
     plugins: [
       {
         name: "papercuts",

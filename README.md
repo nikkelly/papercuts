@@ -25,6 +25,11 @@ That's it — the journal is created on first write, no init step.
 | `papercuts_resolve` | Mark a papercut fixed once its durable outcome exists and is verified (unique ID prefix, min 4 hex chars). |
 | `papercuts_remove` | Drop false positives and duplicates from the queue. |
 
+Every surface emits the same envelope: success is `{"ok":true,"data":{...}}`, failure is
+`{"ok":false,"error":{"code","message"[,"candidates"]}}` (the opencode tools throw errors
+instead of emitting `ok:false`, which opencode renders natively). The CLI maps error codes
+to exit codes: 1 invalid input or usage, 2 not found or ambiguous ID prefix, 3 I/O error.
+
 ## Storage
 
 An append-only JSONL journal — `.papercuts.jsonl` at the repository root by default, so
@@ -74,7 +79,9 @@ auto-discovered — subdirectories are not. For nested layouts (e.g.
 
 Restart opencode after changing plugins — config is loaded once at startup.
 
-The review skill ships in `skill/`; add its path under `"skills": {"paths": [...]}`.
+The review skill ships in `skill/` — an opencode wrapper whose canonical methodology
+lives in the plugin's skills dir (see [Close the loop](#close-the-loop-review-papercuts));
+add its path under `"skills": {"paths": [...]}`.
 
 ### TUI sidebar widget
 
@@ -155,13 +162,16 @@ the opencode side.
 ## Close the loop: review papercuts
 
 Logging is only half the point. Both hosts ship a `review-papercuts` workflow that
-triages the journal into durable fixes.
+triages the journal into durable fixes. The canonical methodology lives in the plugin's
+skills dir and is shared by both hosts: `plugin/skills/review-papercuts/SKILL.md` is the
+single source of truth, and the opencode copy in `skill/` is a thin wrapper around it.
 
 - **opencode**: the bundled skill directory — add to your config:
   ```json
   { "skills": { "paths": ["~/code/opencode-papercuts/skill"] } }
   ```
-  Methodology: [`skill/review-papercuts/SKILL.md`](skill/review-papercuts/SKILL.md).
+  Wrapper: [`skill/review-papercuts/SKILL.md`](skill/review-papercuts/SKILL.md) →
+  canonical: [`plugin/skills/review-papercuts/SKILL.md`](plugin/skills/review-papercuts/SKILL.md).
 - **Codex**: bundled in the plugin's `skills/review-papercuts` — installed with the plugin,
   nothing extra to configure.
 
@@ -202,14 +212,17 @@ causes, and resolve what's verified fixed.
 
 ```shell
 npm install
-npm test          # unit tests (node:test) + CLI tests
-npm run typecheck # tsc --noEmit
-npm run eval      # end-to-end evaluation through the opencode plugin tool surface
+npm test          # unit tests (node:test) + CLI tests + tool-surface evaluation
+npm run typecheck # tsc --noEmit over src/, plugin/src/, scripts/, and test/
 ```
+
+The tool-surface evaluation scenarios (parallel appends, corrupted journals, filter
+combinations, and more) run as ordinary tests in `test/eval.test.ts`, so they are part
+of `npm test` — there is no separate `npm run eval` step anymore.
 
 ### Behavioral evaluation (trigger rate)
 
-`npm run eval` proves the tools do what they're told; `npm run eval:behavioral`
+`npm test` proves the tools do what they're told; `npm run eval:behavioral`
 proves the agent doesn't call them too often. It drives real headless sessions
 (`opencode run --auto`) against disposable fixture repositories — some seeded with
 genuine friction, some deliberately clean — then grades `.papercuts.jsonl` and the
@@ -236,9 +249,12 @@ model with `PAPERCUTS_EVAL_MODEL`; per-run timeout via `PAPERCUTS_EVAL_TIMEOUT_M
 One shared journal core, thin host adapters:
 
 - `plugin/src/store.ts` — canonical store: discovery, content-addressed IDs, tolerant fold
+- `plugin/src/envelope.ts` — shared output contract: `{ok:true,data}` on success,
+  `{ok:false,error:{code,message,candidates?}}` on failure, and the CLI exit-code mapping
 - `src/index.ts` — opencode adapter (native tools via `@opencode-ai/plugin`)
 - `src/tui.tsx` + `src/tui-stats.ts` — opencode TUI sidebar widget (reads the same journal)
-- `plugin/bin/papercuts.mjs` + `plugin/skills/` — Codex adapter (skills-guided CLI)
+- `plugin/bin/papercuts.mjs` + `plugin/skills/` — Codex adapter (skills-guided CLI);
+  `review-papercuts` is the canonical review methodology, with a thin opencode wrapper in `skill/`
 
 Both adapters write identical `.papercuts.jsonl` records; entries record the filing agent.
 A fix to the store lands in both hosts with one commit.

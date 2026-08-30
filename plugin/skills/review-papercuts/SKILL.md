@@ -5,13 +5,29 @@ description: Review the papercuts journal (.papercuts.jsonl) and improve how fut
 
 # Review Papercuts
 
-The journal is `.papercuts.jsonl` at the repository root; use the bundled CLI (see the `papercuts` skill for invocation details — `node <plugin-root>/bin/papercuts.mjs ...`, pass `--agent codex` on every write command (add, resolve, remove)).
+The journal is `.papercuts.jsonl` at the repository root. Review it, then improve how
+future agents operate by turning validated friction into durable fixes.
 
-The goal is not to clean up complaints. The goal is to make the next agent handle the same situation correctly without rediscovering it.
+The goal is not to clean up complaints. The goal is to make the next agent handle the
+same situation correctly without rediscovering it.
+
+## Invocation
+
+Use the surface your host provides:
+
+- **opencode** — native tools:
+  - list: `papercuts_list` (use `status: "all"` to see resolved entries too)
+  - fixed for good: `papercuts_resolve(id, note="where the fix lives")`
+  - invalid, duplicate, or not worth acting on: `papercuts_remove(id)`
+- **Codex** — bundled CLI (see the `papercuts` skill for full invocation details):
+  - list: `node <plugin-root>/bin/papercuts.mjs list --status all`
+  - fixed for good: `node <plugin-root>/bin/papercuts.mjs resolve <id-prefix> --note "where the fix lives" --agent codex`
+  - invalid, duplicate, or not worth acting on: `node <plugin-root>/bin/papercuts.mjs remove <id-prefix> --agent codex`
+  - pass `--agent codex` on every write command (add, resolve, remove)
 
 ## Workflow
 
-1. List the current papercuts: `node <plugin-root>/bin/papercuts.mjs list --status all`
+1. List the current papercuts (see Invocation above).
 2. Deduplicate related entries and validate whether the friction is real. Reproduce it where practical before acting on it.
 3. For each meaningful papercut, ask:
 
@@ -24,10 +40,14 @@ The goal is not to clean up complaints. The goal is to make the next agent handl
    - **Guardrail** — automate or enforce something agents should not have to remember
    - **Warning** — preserve a validated limitation or hazard where future agents will see it before acting
    - **No action** — dismiss one-off mistakes or low-value friction
-5. After the durable outcome exists and has been verified:
-   - fixed for good → `resolve <id-prefix> --note "where the fix lives"`
-   - invalid, duplicate, or not worth acting on → `remove <id-prefix>`
-6. Never resolve a papercut because you *plan* to fix it — resolve only after the fix is verified.
+5. Route specialized work where useful:
+   - unexplained or reproducible failure → investigate before changing anything
+   - structural/codebase friction → architecture improvement task
+   - clear scoped implementation → implement directly
+6. After the durable outcome exists and has been verified:
+   - fixed for good → resolve it, with a note naming where the fix lives
+   - invalid, duplicate, or not worth acting on → remove it
+7. Never resolve a papercut because you *plan* to fix it — resolve only after the fix is verified.
 
 ## Guardrails
 

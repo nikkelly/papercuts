@@ -7,14 +7,15 @@ import test from "node:test";
 import papercutsPlugin from "../src/index.ts";
 
 test("plugin registers all four tools", async () => {
-  const hooks = await papercutsPlugin({} as never);
-  for (const name of ["papercuts_add", "papercuts_list", "papercuts_resolve", "papercuts_remove"]) {
+  const hooks = await papercutsPlugin();
+  const names = ["papercuts_add", "papercuts_list", "papercuts_resolve", "papercuts_remove"] as const;
+  for (const name of names) {
     assert.ok(hooks.tool?.[name], `missing tool: ${name}`);
   }
 });
 
 test("session directory wins over a root worktree sentinel from the host", async () => {
-  const hooks = await papercutsPlugin({} as never);
+  const hooks = await papercutsPlugin();
   const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-plugin-"));
   mkdirSync(join(directory, ".git"), { recursive: true });
   try {
@@ -32,7 +33,7 @@ test("session directory wins over a root worktree sentinel from the host", async
       (await hooks.tool!.papercuts_add.execute({ text: "worktree sentinel" }, context)) as string,
     );
     assert.equal(added.ok, true);
-    assert.equal(added.record.cwd, directory);
+    assert.equal(added.data.record.cwd, directory);
     assert.equal(existsSync(join(directory, ".papercuts.jsonl")), true);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -40,7 +41,7 @@ test("session directory wins over a root worktree sentinel from the host", async
 });
 
 test("tool execution falls back to process.cwd() when context paths are empty", async () => {
-  const hooks = await papercutsPlugin({} as never);
+  const hooks = await papercutsPlugin();
   const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-plugin-"));
   // Pin repo discovery to the fixture: a real .git above tmpdir would otherwise win.
   mkdirSync(join(directory, ".git"), { recursive: true });
@@ -63,11 +64,11 @@ test("tool execution falls back to process.cwd() when context paths are empty", 
     );
     assert.equal(added.ok, true);
     assert.equal(existsSync(join(directory, ".papercuts.jsonl")), true);
-    assert.notEqual(added.record.cwd, "/");
+    assert.notEqual(added.data.record.cwd, "/");
     const listed = JSON.parse(
       (await hooks.tool!.papercuts_list.execute({}, context)) as string,
     );
-    assert.equal(listed.count, 1);
+    assert.equal(listed.data.count, 1);
   } finally {
     process.chdir(previousCwd);
     rmSync(directory, { recursive: true, force: true });

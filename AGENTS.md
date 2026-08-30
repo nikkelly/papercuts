@@ -25,7 +25,7 @@ asked to review papercuts, follow `skill/review-papercuts/SKILL.md`.
 - Zero runtime dependencies except `zod` pinned to the exact version
   `@opencode-ai/plugin` depends on.
 - Tests use `node:test`; run `npm test`. End-to-end coverage lives in
-  `scripts/eval.ts` (`npm run eval`), which must exercise the real plugin tool surface,
+  `test/eval.test.ts` (part of `npm test`), which must exercise the real plugin tool surface,
   not the store directly.
 - Store semantics are append-only: never rewrite or truncate the journal in code;
   corrections are new events.
