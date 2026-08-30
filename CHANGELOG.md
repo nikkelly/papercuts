@@ -11,6 +11,11 @@
 - Agent attribution: store operations accept an `agent` option (default `opencode`);
   the skills instruct agents to pass `--agent codex` on writes, so journal entries record their source host.
 - Repo marketplace manifest at `.agents/plugins/marketplace.json`.
+- Private/local Codex install: `scripts/install-codex-plugin.mjs` (via `npm run
+  install:codex`) copies the plugin tree into a personal marketplace, registers +
+  (re)installs `papercuts@personal` headlessly, and prints the resolved CLI path. Designed
+  for private repos or local dev — keeps the plugin offline, no public marketplace needed.
+  `mergeMarketplace` (in `scripts/codex-marketplace.mjs`) is unit-tested with node:test.
 
 ## 0.1.0
 

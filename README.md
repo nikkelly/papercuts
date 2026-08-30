@@ -103,33 +103,54 @@ The same journal works in Codex through a skills-based plugin — no MCP server,
 The plugin bundles two skills (`papercuts` for capture, `review-papercuts` for triage)
 and a zero-dependency CLI (`bin/papercuts.mjs`) that both hosts' agents can drive.
 
-Register this repo as a marketplace and install:
+Codex reads `AGENTS.md` natively; combined with the bundled skills it will file papercuts
+as it works. Entries carry agent attribution (`--agent codex`) so you can tell which host
+filed what. Requires Node 23+ on PATH for type-stripped execution of the CLI.
+
+### Public / shared repos (Git marketplace)
+
+If the repo is public (or you're sharing with a team), register it as a marketplace and
+install from it:
 
 ```bash
 codex plugin marketplace add nikkelly/opencode-papercuts
 # then: /plugins → Papercuts → install, and start a new session
 ```
 
-For local testing without git, copy `plugin/` into `~/.codex/plugins/papercuts` and add
-a personal marketplace entry at `~/.agents/plugins/marketplace.json`:
+### Private / local development (one-command installer)
 
-```json
-{
-  "name": "personal",
-  "plugins": [
-    {
-      "name": "papercuts",
-      "source": { "source": "local", "path": "./.codex/plugins/papercuts" },
-      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
-      "category": "Developer tools"
-    }
-  ]
-}
+If the repo is private — or you're hacking on this plugin locally — don't register a
+public marketplace. Use the bundled installer, which keeps everything offline on your
+machine:
+
+```bash
+npm run install:codex
 ```
 
-Codex reads `AGENTS.md` natively; combined with the bundled skills it will file papercuts
-as it works. Entries carry agent attribution (`--agent codex`) so you can tell which host
-filed what. Requires Node 23+ on PATH for type-stripped execution of the CLI.
+That single command (idempotent — safe to re-run):
+
+1. copies the `plugin/` tree to `~/.codex/plugins/papercuts`,
+2. ensures a `local` source entry in your personal marketplace
+   (`~/.agents/plugins/marketplace.json`, merging, never clobbering other entries),
+3. registers the `personal` marketplace if it isn't already listed,
+4. (re)installs `papercuts@personal` headlessly — no `/plugins` menu needed,
+5. prints the resolved CLI path and the exact `AGENTS.md` pen line to paste.
+
+Then start a new Codex session. The installer only targets the Codex CLI config;
+it does not touch the opencode side.
+
+### Updating the plugin
+
+The two hosts update differently, because opencode loads live while Codex copies:
+
+- **opencode**: `git pull`, then restart opencode. Config points straight at
+  `src/index.ts`, so `git pull` + restart is all it takes — no reinstall step.
+- **Codex**: `git pull`, then re-run `npm run install:codex` (it reinstalls,
+  refreshing the installed copy), then start a new session.
+
+For a locally developed plugin like this one that both hosts use, the whole loop is
+`git pull && npm run install:codex` on the Codex side, and just `git pull` + restart on
+the opencode side.
 
 ## Close the loop: review papercuts
 
@@ -172,6 +193,10 @@ Never include secrets.
 
 Then periodically have an agent review the journal — "review papercuts" — fix root
 causes, and resolve what's verified fixed.
+
+> **Codex path hint:** in the snippet above, replace `<plugin-root>` with the actual path.
+> If you installed via `npm run install:codex`, that command prints the exact pen line
+> (resolved to `~/.codex/plugins/papercuts`) for you to paste.
 
 ## Development
 
