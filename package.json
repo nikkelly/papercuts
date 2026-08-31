@@ -10,7 +10,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./journal": "./plugin/src/journal.ts"
+    "./journal": "./plugin/src/journal.ts",
+    "./tools": "./plugin/src/tools.ts"
   },
   "bin": {
     "papercuts": "./plugin/bin/papercuts.mjs"

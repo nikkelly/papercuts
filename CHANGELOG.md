@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Shared tool contracts: `plugin/src/tools.ts` defines the six papercuts tools (name,
+  description, zod args, and a run handler over `Journal`) once; both the native opencode
+  plugin and the new Codex MCP server register against it, removing adapter drift.
+- Codex MCP server: `plugin/src/mcp.ts` is a zero-dependency stdio MCP server (registered
+  via `plugin/.mcp.json`) exposing the same tools as `mcp__papercuts__*`, defaulting
+  attribution to `codex`; the CLI remains the standalone/CI surface.
+- Codex installer pinning: `scripts/install-codex-plugin.mjs` now rewrites the copied
+  `.mcp.json` so the MCP server path is an absolute path under the install target, making
+  the launcher cwd-independent.
+- Integration test for the real MCP server over stdio (`test/mcp.test.ts`).
 - Sidebar mute: `papercuts_mute`/`papercuts_unmute` tools, `papercuts
   mute|unmute|toggle|status` CLI commands, and a `Papercuts: Toggle sidebar` TUI
   command (keybind `ctrl+x p`) hide and show the sidebar widget via append-only
@@ -28,7 +38,8 @@
   (error for open blockers, warning at ≥3 opened today or ≥2 open majors); collapse
   matches the built-in Todo section.
 - Codex plugin (`plugin/`): skills-based integration with a zero-dependency CLI
-  (`bin/papercuts.mjs`), distributable via git marketplace — no npm or MCP required.
+  (`bin/papercuts.mjs`) and an MCP server, distributable via git marketplace — no npm
+  required.
 - Agent attribution: store operations accept an `agent` option (default `opencode`);
   the skills instruct agents to pass `--agent codex` on writes, so journal entries record their source host.
 - Repo marketplace manifest at `.agents/plugins/marketplace.json`.

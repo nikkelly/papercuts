@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { marketplaceEntry, mergeMarketplace, PAPERCUTS_ENTRY } from "../scripts/codex-marketplace.mjs";
+import { pinMcpServerPath } from "../scripts/install-codex-plugin.mjs";
 
 test("mergeMarketplace seeds a brand-new marketplace file shape", () => {
   const merged = mergeMarketplace(undefined);
@@ -73,4 +77,22 @@ test("mergeMarketplace replaces an existing papercuts entry regardless of manife
   const merged = mergeMarketplace(existing);
   assert.equal(merged.plugins.length, 1);
   assert.deepEqual(merged.plugins[0], PAPERCUTS_ENTRY);
+});
+
+test("pinMcpServerPath rewrites the copied .mcp.json args[0] to an absolute path", () => {
+  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  try {
+    const target = resolve(join(directory, "installed"));
+    mkdirSync(join(target, "src"), { recursive: true });
+    writeFileSync(join(target, ".mcp.json"), JSON.stringify({
+      mcpServers: { papercuts: { command: "node", args: ["./src/mcp.ts"] } },
+    }));
+
+    pinMcpServerPath(target);
+
+    const config = JSON.parse(readFileSync(join(target, ".mcp.json"), "utf8"));
+    assert.equal(config.mcpServers.papercuts.args[0], join(target, "src", "mcp.ts"));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

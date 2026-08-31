@@ -164,9 +164,18 @@ Enable it by listing the TUI module in `.opencode/tui.json` (or
 
 ## Install for Codex (plugin)
 
-The same journal works in Codex through a skills-based plugin — no MCP server, no npm.
-The plugin bundles two skills (`papercuts` for capture, `review-papercuts` for triage)
-and a zero-dependency CLI (`bin/papercuts.mjs`) that both hosts' agents can drive.
+The same journal works in Codex through a plugin that bundles an MCP server and two skills
+(`papercuts` for capture, `review-papercuts` for triage), plus a zero-dependency CLI
+(`bin/papercuts.mjs`).
+
+**Codex MCP tools.** The plugin ships an MCP stdio server (`plugin/.mcp.json` →
+`plugin/src/mcp.ts`) so a Codex session can call the same structured tools natively — they
+surface as `mcp__papercuts__add`, `mcp__papercuts__list`, `mcp__papercuts__resolve`,
+`mcp__papercuts__remove`, `mcp__papercuts__mute`, and `mcp__papercuts__unmute`. These write
+and read the same journal with the same `--agent codex` attribution semantics as the CLI.
+The CLI remains the standalone/CI surface and stays the line the shared `AGENTS.md` pen uses
+for Codex, so instructions never hardcode `mcp__` names that vanish when the plugin is absent.
+
 Beyond `add`/`list`/`resolve`/`remove`, the CLI shares the TUI mute state:
 `papercuts mute|unmute|toggle` hide or show the opencode sidebar section for the
 repository, and `papercuts status` reports it.
@@ -311,13 +320,15 @@ model with `PAPERCUTS_EVAL_MODEL`; per-run timeout via `PAPERCUTS_EVAL_TIMEOUT_M
 
 One shared journal core, thin host adapters:
 
+- `plugin/src/tools.ts` — shared tool contracts (name, description, zod args, run handler) for the six papercuts tools, written once and registered by both adapters
 - `plugin/src/journal.ts` — the journal module: path discovery, content-addressed IDs, tolerant fold, and the mutable operations behind a single `Journal.open()` seam
 - `plugin/src/envelope.ts` — shared output contract: `{ok:true,data}` on success,
   `{ok:false,error:{code,message,candidates?}}` on failure, and the CLI exit-code mapping
 - `src/index.ts` — opencode adapter (native tools via `@opencode-ai/plugin`)
 - `src/tui.tsx` + `src/tui-stats.ts` — opencode TUI sidebar widget (reads the same journal)
-- `plugin/bin/papercuts.mjs` + `plugin/skills/` — Codex adapter (skills-guided CLI);
+- `plugin/src/mcp.ts` — Codex MCP adapter (zero-dependency stdio MCP server over the shared tools, agent defaults to `codex`)
+- `plugin/bin/papercuts.mjs` + `plugin/skills/` — Codex CLI + skill adapter (skills-guided CLI);
   `review-papercuts` is the canonical review methodology, with a thin opencode wrapper in `skill/`
 
 Both adapters write identical `.papercuts.jsonl` records; entries record the filing agent.
-A fix to the store lands in both hosts with one commit.
+A fix to the store lands in all hosts with one commit.

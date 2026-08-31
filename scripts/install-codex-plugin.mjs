@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -85,6 +85,8 @@ export function installCodex(options = {}) {
   lines.push(`copying plugin tree -> ${INSTALL_TARGET}`);
   copyTree(pluginSrc, INSTALL_TARGET);
 
+  pinMcpServerPath(INSTALL_TARGET);
+
   lines.push(`ensuring personal marketplace -> ${MARKETPLACE_FILE}`);
   ensureMarketplaceFile();
 
@@ -122,6 +124,17 @@ export function installCodex(options = {}) {
 
   lines.push("\nRestart Codex or start a new session to pick up the plugin changes.");
   return { status: 0, lines, errors };
+}
+
+export function pinMcpServerPath(installTarget) {
+  const mcpFile = join(installTarget, ".mcp.json");
+  if (!existsSync(mcpFile)) return;
+  const config = JSON.parse(readFileSync(mcpFile, "utf8"));
+  const server = config?.mcpServers?.papercuts;
+  if (server && Array.isArray(server.args)) {
+    server.args[0] = join(installTarget, "src", "mcp.ts");
+  }
+  writeFileSync(mcpFile, JSON.stringify(config, null, 2) + "\n");
 }
 
 function main() {
