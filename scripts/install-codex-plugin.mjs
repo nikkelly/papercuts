@@ -1,18 +1,11 @@
 #!/usr/bin/env node
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
 
+import { copyTree, readJsonOrDefault, runCommand, writeJson } from "../shared/install.mjs";
 import { mergeMarketplace, PAPERCUTS_ENTRY } from "./codex-marketplace.mjs";
+import { installCli } from "./install-cli.mjs";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const PLUGIN_SRC = join(REPO_ROOT, "plugin");
@@ -22,48 +15,8 @@ const INSTALL_TARGET = join(CODEX_PLUGINS_DIR, "papercuts");
 const MARKETPLACE_DIR = join(homedir(), ".agents", "plugins");
 const MARKETPLACE_FILE = join(MARKETPLACE_DIR, "marketplace.json");
 
-function run(cmd, args, opts = {}) {
-  const result = spawnSync(cmd, args, { encoding: "utf8", stdio: "pipe", ...opts });
-  if (result.error) {
-    if (result.error.code === "ENOENT") {
-      process.stderr.write(`error: "${cmd}" not found on PATH\n`);
-      process.exit(1);
-    }
-    throw result.error;
-  }
-  return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
-}
-
-function pluginRootOrExit() {
-  if (!existsSync(PLUGIN_SRC)) {
-    process.stderr.write(`error: no plugin tree at ${PLUGIN_SRC}\n`);
-    process.exit(1);
-  }
-}
-
-function copyTree(src, dest) {
-  mkdirSync(dest, { recursive: true });
-  for (const entry of readdirSync(src)) {
-    const from = join(src, entry);
-    const to = join(dest, entry);
-    if (statSync(from).isDirectory()) {
-      copyTree(from, to);
-    } else {
-      copyFileSync(from, to);
-    }
-  }
-}
-
 function ensureMarketplaceFile() {
-  mkdirSync(MARKETPLACE_DIR, { recursive: true });
-  let existing = {};
-  if (existsSync(MARKETPLACE_FILE)) {
-    try {
-      existing = JSON.parse(readFileSync(MARKETPLACE_FILE, "utf8"));
-    } catch {
-      existing = {};
-    }
-  }
+  const existing = readJsonOrDefault(MARKETPLACE_FILE, {});
   const merged = mergeMarketplace(existing);
   // The installer owns this home-dir manifest for this marketplace, so always force the
   // name: registration and `papercuts@${MARKETPLACE_NAME}` reinstall below depend on it,
@@ -71,19 +24,18 @@ function ensureMarketplaceFile() {
   // otherwise make the install fail or install under the wrong marketplace.
   merged.name = MARKETPLACE_NAME;
   if (!merged.interface) merged.interface = { displayName: "Personal plugins" };
-  writeFileSync(MARKETPLACE_FILE, JSON.stringify(merged, null, 2) + "\n");
+  writeJson(MARKETPLACE_FILE, merged);
 }
 
 function isMarketplaceRegistered() {
-  const { stdout } = run("codex", ["plugin", "marketplace", "list"]);
-  const line = stdout
+  const { stdout } = runCommand("codex", ["plugin", "marketplace", "list"]);
+  return stdout
     .split("\n")
-    .find(
-      (l) =>
-        l.trimStart().startsWith(MARKETPLACE_NAME) &&
-        (l.trimStart() === MARKETPLACE_NAME || /\s/.test(l.slice(MARKETPLACE_NAME.length))),
+    .some(
+      (line) =>
+        line.trimStart().startsWith(MARKETPLACE_NAME) &&
+        (line.trimStart() === MARKETPLACE_NAME || /\s/.test(line.slice(MARKETPLACE_NAME.length))),
     );
-  return line !== undefined;
 }
 
 function findInstalledCli() {
@@ -94,12 +46,8 @@ function findInstalledCli() {
       const out = [];
       for (const entry of readdirSync(dir)) {
         const p = join(dir, entry);
-        let st;
-        try {
-          st = statSync(p);
-        } catch {
-          continue;
-        }
+        const st = statSync(p, { throwIfNoEntry: false });
+        if (st === undefined) continue;
         if (st.isDirectory()) out.push(...walk(p));
         else if (entry === "papercuts.mjs") out.push(p);
       }
@@ -116,50 +64,71 @@ function findInstalledCli() {
   return null;
 }
 
-function main() {
-  pluginRootOrExit();
-  run("codex", ["--version"]);
+export function installCodex(options = {}) {
+  const root = options.repoRoot ?? REPO_ROOT;
+  const pluginSrc = join(root, "plugin");
+  const lines = [];
+  const errors = [];
 
-  process.stdout.write("copying plugin tree -> " + INSTALL_TARGET + "\n");
-  copyTree(PLUGIN_SRC, INSTALL_TARGET);
+  if (!existsSync(pluginSrc)) {
+    errors.push(`error: no plugin tree at ${pluginSrc}`);
+    return { status: 1, lines, errors };
+  }
 
-  process.stdout.write("ensuring personal marketplace -> " + MARKETPLACE_FILE + "\n");
+  try {
+    runCommand("codex", ["--version"]);
+  } catch (error) {
+    errors.push(error.message);
+    return { status: 1, lines, errors };
+  }
+
+  lines.push(`copying plugin tree -> ${INSTALL_TARGET}`);
+  copyTree(pluginSrc, INSTALL_TARGET);
+
+  lines.push(`ensuring personal marketplace -> ${MARKETPLACE_FILE}`);
   ensureMarketplaceFile();
 
   if (!isMarketplaceRegistered()) {
-    process.stdout.write(`registering marketplace "${MARKETPLACE_NAME}"\n`);
-    run("codex", ["plugin", "marketplace", "add", MARKETPLACE_DIR]);
+    lines.push(`registering marketplace "${MARKETPLACE_NAME}"`);
+    runCommand("codex", ["plugin", "marketplace", "add", MARKETPLACE_DIR]);
   } else {
-    process.stdout.write(`marketplace "${MARKETPLACE_NAME}" already registered\n`);
+    lines.push(`marketplace "${MARKETPLACE_NAME}" already registered`);
   }
 
-  process.stdout.write("reinstalling papercuts (unconditional refresh)\n");
-  run("codex", ["plugin", "remove", `papercuts@${MARKETPLACE_NAME}`]);
-  run("codex", ["plugin", "add", `papercuts@${MARKETPLACE_NAME}`, "--json"]);
+  lines.push("reinstalling papercuts (unconditional refresh)");
+  runCommand("codex", ["plugin", "remove", `papercuts@${MARKETPLACE_NAME}`]);
+  runCommand("codex", ["plugin", "add", `papercuts@${MARKETPLACE_NAME}`, "--json"]);
 
   const cli = findInstalledCli();
-  process.stdout.write("\n== Codex plugin papercuts installed ==\n");
+  lines.push("\n== Codex plugin papercuts installed ==");
   if (cli) {
-    const root = resolve(cli, "..", "..");
-    process.stdout.write(`plugin root: ${root}\n`);
-    process.stdout.write(
-      `AGENTS.md pen: node ${root}/bin/papercuts.mjs add "<text>" --tag <area> --agent codex\n`,
+    const cliRoot = resolve(cli, "..", "..");
+    lines.push(`plugin root: ${cliRoot}`);
+    lines.push(
+      `AGENTS.md pen: node ${cliRoot}/bin/papercuts.mjs add "<text>" --tag <area> --agent codex`,
     );
   } else {
-    process.stdout.write(
-      "note: could not locate the installed CLI; check `codex plugin list`.\n",
+    lines.push(
+      "note: could not locate the installed CLI; check `codex plugin list`.",
     );
   }
 
-  process.stdout.write("\ninstalling the papercuts command on PATH\n");
-  const link = run(process.execPath, [join(REPO_ROOT, "scripts", "install-cli.mjs")], {
-    stdio: "inherit",
-  });
+  lines.push("\ninstalling the papercuts command on PATH");
+  const link = installCli();
   if (link.status !== 0) {
-    process.stdout.write("warning: could not link the papercuts command; see errors above\n");
+    lines.push("warning: could not link the papercuts command; see errors above");
+    errors.push(...link.errors);
   }
 
-  process.stdout.write("\nRestart Codex or start a new session to pick up the plugin changes.\n");
+  lines.push("\nRestart Codex or start a new session to pick up the plugin changes.");
+  return { status: 0, lines, errors };
+}
+
+function main() {
+  const { status, lines, errors } = installCodex();
+  for (const line of lines) process.stdout.write(line + "\n");
+  for (const err of errors) process.stderr.write(err + "\n");
+  if (status !== 0) process.exitCode = status;
 }
 
 main();

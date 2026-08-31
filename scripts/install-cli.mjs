@@ -5,47 +5,58 @@ import { join, resolve } from "node:path";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const CLI_SOURCE = join(REPO_ROOT, "plugin", "bin", "papercuts.mjs");
-const BIN_DIR = process.env.PAPERCUTS_BIN_DIR ?? join(homedir(), ".local", "bin");
-const LINK_PATH = join(BIN_DIR, "papercuts");
 
-function linkIsOurs() {
+function linkIsOurs(linkPath, source) {
   try {
-    const target = readlinkSync(LINK_PATH);
-    return resolve(target) === CLI_SOURCE;
+    return resolve(readlinkSync(linkPath)) === source;
   } catch {
     return false;
   }
 }
 
-function main() {
+export function installCli(options = {}) {
+  const binDir =
+    options.binDir ?? process.env.PAPERCUTS_BIN_DIR ?? join(homedir(), ".local", "bin");
+  const linkPath = join(binDir, "papercuts");
+  const lines = [];
+  const errors = [];
+
   if (!existsSync(CLI_SOURCE)) {
-    process.stderr.write(`error: no CLI at ${CLI_SOURCE}\n`);
-    process.exit(1);
+    errors.push(`error: no CLI at ${CLI_SOURCE}`);
+    return { status: 1, lines, errors };
   }
 
-  const existing = lstatSync(LINK_PATH, { throwIfNoEntry: false });
+  const existing = lstatSync(linkPath, { throwIfNoEntry: false });
   if (existing !== undefined) {
-    if (linkIsOurs()) {
-      process.stdout.write(`papercuts already linked: ${LINK_PATH} -> ${CLI_SOURCE}\n`);
+    if (linkIsOurs(linkPath, CLI_SOURCE)) {
+      lines.push(`papercuts already linked: ${linkPath} -> ${CLI_SOURCE}`);
     } else {
-      process.stderr.write(
-        `error: ${LINK_PATH} exists and is not the papercuts symlink; remove it or set PAPERCUTS_BIN_DIR\n`,
+      errors.push(
+        `error: ${linkPath} exists and is not the papercuts symlink; remove it or set PAPERCUTS_BIN_DIR`,
       );
-      process.exit(1);
+      return { status: 1, lines, errors };
     }
   } else {
-    mkdirSync(BIN_DIR, { recursive: true });
-    symlinkSync(CLI_SOURCE, LINK_PATH);
-    process.stdout.write(`linked: ${LINK_PATH} -> ${CLI_SOURCE}\n`);
+    mkdirSync(binDir, { recursive: true });
+    symlinkSync(CLI_SOURCE, linkPath);
+    lines.push(`linked: ${linkPath} -> ${CLI_SOURCE}`);
   }
 
-  const onPath = process.env.PATH?.split(":").some((entry) => resolve(entry) === resolve(BIN_DIR));
+  const onPath = process.env.PATH?.split(":").some((entry) => resolve(entry) === resolve(binDir));
   if (!onPath) {
-    process.stderr.write(`warning: ${BIN_DIR} is not on PATH; add it to use \`papercuts\` directly\n`);
+    errors.push(`warning: ${binDir} is not on PATH; add it to use \`papercuts\` directly`);
   }
 
-  process.stdout.write("verify with: papercuts status\n");
-  process.stdout.write('pen: papercuts add "what you hit and what would have prevented it" --tag <area> --agent codex\n');
+  lines.push("verify with: papercuts status");
+  lines.push('pen: papercuts add "what you hit and what would have prevented it" --tag <area> --agent codex');
+  return { status: 0, lines, errors };
+}
+
+function main() {
+  const { status, lines, errors } = installCli();
+  for (const line of lines) process.stdout.write(line + "\n");
+  for (const err of errors) process.stderr.write(err + "\n");
+  if (status !== 0) process.exitCode = status;
 }
 
 main();

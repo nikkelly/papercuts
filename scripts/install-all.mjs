@@ -1,24 +1,32 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
-import { join, resolve } from "node:path";
+import { installCli } from "./install-cli.mjs";
+import { installCodex } from "./install-codex-plugin.mjs";
+import { installOpenCode } from "./install-opencode.mjs";
 
-const SCRIPTS = resolve(import.meta.dirname);
 const globalTarget = process.argv.includes("--global");
 
 const steps = [
-  ["opencode config", join(SCRIPTS, "install-opencode.mjs"), globalTarget ? ["--global"] : []],
-  ["papercuts command", join(SCRIPTS, "install-cli.mjs"), []],
-  ["codex plugin", join(SCRIPTS, "install-codex-plugin.mjs"), []],
+  { label: "opencode config", run: () => installOpenCode({ globalTarget }) },
+  { label: "papercuts command", run: () => installCli() },
+  { label: "codex plugin", run: () => installCodex() },
 ];
 
-for (const [label, script, args] of steps) {
-  process.stdout.write(`\n== ${label} ==\n`);
-  const result = spawnSync(process.execPath, [script, ...args], { stdio: "inherit" });
+let failed = false;
+for (const step of steps) {
+  process.stdout.write(`\n== ${step.label} ==\n`);
+  const result = step.run();
+  for (const line of result.lines) process.stdout.write(line + "\n");
+  for (const err of result.errors) process.stderr.write(err + "\n");
   if (result.status !== 0) {
-    process.stderr.write(`error: ${label} failed (exit ${result.status ?? "unknown"})\n`);
-    process.exit(result.status ?? 1);
+    process.stderr.write(`error: ${step.label} failed (exit ${result.status})\n`);
+    failed = true;
+    break;
   }
 }
 
-process.stdout.write("\n== full papercuts install complete ==\n");
-process.stdout.write("Restart opencode and start a new Codex session to pick everything up.\n");
+if (failed) {
+  process.exitCode = 1;
+} else {
+  process.stdout.write("\n== full papercuts install complete ==\n");
+  process.stdout.write("Restart opencode and start a new Codex session to pick everything up.\n");
+}

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { readJsonOrThrow, writeJson } from "../shared/install.mjs";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const PLUGIN_ENTRY = join(REPO_ROOT, "src", "index.ts");
 const SKILL_DIR = join(REPO_ROOT, "skill");
 const TUI_ENTRY = join(REPO_ROOT, "src", "tui.tsx");
 
-function targets(globalTarget) {
+export function targets(globalTarget) {
   if (globalTarget) {
     const dir = join(homedir(), ".config", "opencode");
     return { opencode: join(dir, "opencode.json"), tui: join(dir, "tui.json") };
@@ -19,78 +20,64 @@ function targets(globalTarget) {
   };
 }
 
-function readJson(path) {
-  if (!existsSync(path)) return null;
-  let raw;
-  try {
-    raw = readFileSync(path, "utf8");
-  } catch (error) {
-    throw new Error(`cannot read ${path}: ${error.message}`);
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw new Error(
-      `${path} is not valid JSON (JSONC is not supported); add the papercuts entries manually`,
-    );
-  }
-}
-
 function references(configDir, entries, wanted) {
   return entries.some(
     (entry) => entry === wanted || resolve(configDir, entry) === wanted,
   );
 }
 
-function wireOpenCode(configPath, globalTarget) {
-  const config = readJson(configPath) ?? {};
+function wireOpenCode(configPath, lines) {
+  const config = readJsonOrThrow(configPath) ?? {};
+  const plugins = config.plugin ??= [];
   let changed = false;
-  const plugins = (config.plugin ??= []);
   if (!references(dirname(configPath), plugins, PLUGIN_ENTRY)) {
     plugins.push(PLUGIN_ENTRY);
     changed = true;
   }
-  const paths = ((config.skills ??= {}).paths ??= []);
+  const paths = (config.skills ??= {}).paths ??= [];
   if (!references(dirname(configPath), paths, SKILL_DIR)) {
     paths.push(SKILL_DIR);
     changed = true;
   }
   if (changed) {
-    mkdirSync(dirname(configPath), { recursive: true });
-    writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
-    process.stdout.write(`wired papercuts into ${configPath}\n`);
+    writeJson(configPath, config);
+    lines.push(`wired papercuts into ${configPath}`);
   } else {
-    process.stdout.write(`papercuts already wired in ${configPath}\n`);
+    lines.push(`papercuts already wired in ${configPath}`);
   }
-  return changed;
 }
 
-function wireTui(configPath) {
-  const config = readJson(configPath) ?? {};
-  let changed = false;
-  const plugins = (config.plugin ??= []);
+function wireTui(configPath, lines) {
+  const config = readJsonOrThrow(configPath) ?? {};
+  const plugins = config.plugin ??= [];
   if (!references(dirname(configPath), plugins, TUI_ENTRY)) {
     plugins.push(TUI_ENTRY);
-    changed = true;
-  }
-  if (changed) {
-    mkdirSync(dirname(configPath), { recursive: true });
-    writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
-    process.stdout.write(`wired TUI widget into ${configPath}\n`);
+    writeJson(configPath, config);
+    lines.push(`wired TUI widget into ${configPath}`);
   } else {
-    process.stdout.write(`TUI widget already wired in ${configPath}\n`);
+    lines.push(`TUI widget already wired in ${configPath}`);
   }
+}
+
+export function installOpenCode(options = {}) {
+  const globalTarget = options.globalTarget ?? false;
+  const { opencode, tui } = targets(globalTarget);
+  const lines = [];
+  wireOpenCode(opencode, lines);
+  wireTui(tui, lines);
+  const scope = globalTarget ? "global (~/.config/opencode)" : `project (${process.cwd()})`;
+  lines.push(
+    `opencode papercuts installed for ${scope}; restart opencode to pick it up`,
+  );
+  return { status: 0, lines, errors: [] };
 }
 
 function main() {
   const globalTarget = process.argv.includes("--global");
-  const { opencode, tui } = targets(globalTarget);
-  wireOpenCode(opencode, globalTarget);
-  wireTui(tui);
-  const scope = globalTarget ? "global (~/.config/opencode)" : `project (${process.cwd()})`;
-  process.stdout.write(
-    `opencode papercuts installed for ${scope}; restart opencode to pick it up\n`,
-  );
+  const { status, lines, errors } = installOpenCode({ globalTarget });
+  for (const line of lines) process.stdout.write(line + "\n");
+  for (const err of errors) process.stderr.write(err + "\n");
+  if (status !== 0) process.exitCode = status;
 }
 
 main();
