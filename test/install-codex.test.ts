@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { marketplaceEntry, mergeMarketplace, PAPERCUTS_ENTRY } from "../scripts/codex-marketplace.mjs";
-import { pinMcpServerPath } from "../scripts/install-codex-plugin.mjs";
+import { pinMcpServerPath, removeStaleNodeModules } from "../scripts/install-codex-plugin.mjs";
 
 test("mergeMarketplace seeds a brand-new marketplace file shape", () => {
   const merged = mergeMarketplace(undefined);
@@ -92,6 +92,38 @@ test("pinMcpServerPath rewrites the copied .mcp.json args[0] to an absolute path
 
     const config = JSON.parse(readFileSync(join(target, ".mcp.json"), "utf8"));
     assert.equal(config.mcpServers.papercuts.args[0], join(target, "src", "mcp.ts"));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("removeStaleNodeModules drops a leftover node_modules from the install target", () => {
+  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  try {
+    const target = resolve(join(directory, "installed"));
+    const stale = join(target, "node_modules", "zod");
+    mkdirSync(stale, { recursive: true });
+    writeFileSync(join(stale, "package.json"), "{}");
+    mkdirSync(join(target, "src"), { recursive: true });
+
+    removeStaleNodeModules(target);
+
+    assert.equal(existsSync(join(target, "node_modules")), false);
+    assert.equal(existsSync(join(target, "src")), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("removeStaleNodeModules is a no-op when there is no node_modules", () => {
+  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  try {
+    const target = resolve(join(directory, "installed"));
+    mkdirSync(join(target, "src"), { recursive: true });
+
+    removeStaleNodeModules(target);
+
+    assert.equal(existsSync(join(target, "src")), true);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

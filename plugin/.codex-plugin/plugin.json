@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": ["papercuts", "friction-log", "developer-experience", "agents"],
   "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Papercuts",
     "shortDescription": "A complaint box for agents: log friction, review it, fix root causes",

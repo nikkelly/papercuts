@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -83,6 +83,7 @@ export function installCodex(options = {}) {
   }
 
   lines.push(`copying plugin tree -> ${INSTALL_TARGET}`);
+  removeStaleNodeModules(INSTALL_TARGET);
   copyTree(pluginSrc, INSTALL_TARGET);
 
   pinMcpServerPath(INSTALL_TARGET);
@@ -124,6 +125,14 @@ export function installCodex(options = {}) {
 
   lines.push("\nRestart Codex or start a new session to pick up the plugin changes.");
   return { status: 0, lines, errors };
+}
+
+export function removeStaleNodeModules(installTarget) {
+  // The plugin subtree is dependency-free; a stale `node_modules` from an older
+  // install (e.g. the pre-mini-schema zod era) would linger forever because
+  // copyTree never cleans its destination. Drop it so reinstalls stay clean.
+  const dir = join(installTarget, "node_modules");
+  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
 }
 
 export function pinMcpServerPath(installTarget) {

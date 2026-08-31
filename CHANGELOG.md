@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Dependency-free standalone plugin: `plugin/src/tools.ts` and `plugin/src/mcp.ts` now build and
+  validate tool contracts with a small internal module (`plugin/src/schema.ts`) instead of zod, so
+  the plugin subtree ships with zero runtime dependencies. The MCP server runs from any copied
+  plugin tree (install target, codex cache snapshot, or git marketplace) without `node_modules`;
+  zod remains a dependency only of the opencode host (`src/index.ts`), where the SDK requires it.
 - Shared tool contracts: `plugin/src/tools.ts` defines the six papercuts tools (name,
   description, zod args, and a run handler over `Journal`) once; both the native opencode
   plugin and the new Codex MCP server register against it, removing adapter drift.

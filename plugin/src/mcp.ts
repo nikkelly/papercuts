@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline";
-import { z } from "zod";
 import { errorEnvelope, ok } from "./envelope.ts";
 import { Journal, PapercutsError } from "./journal.ts";
+import { toJsonSchema, validate } from "./schema.ts";
 import { tools } from "./tools.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
@@ -29,7 +29,7 @@ function listTools(): unknown {
     tools: tools.map((entry) => ({
       name: entry.name,
       description: entry.description,
-      inputSchema: z.toJSONSchema(entry.schema),
+      inputSchema: toJsonSchema(entry.args),
     })),
   };
 }
@@ -39,17 +39,14 @@ function callTool(name: string, args: unknown): unknown {
   if (!entry) {
     throw new ToolNotFoundError(name);
   }
-  const parsed = entry.schema.safeParse(args ?? {});
+  const parsed = validate(entry.args, args ?? {});
   if (!parsed.success) {
-    const message = parsed.error.issues
-      .map((issue) => issue.message)
-      .join("; ");
     return operationError(
-      new PapercutsError("invalid_argument", `invalid arguments: ${message}`),
+      new PapercutsError("invalid_argument", `invalid arguments: ${parsed.messages.join("; ")}`),
     );
   }
   try {
-    const data = entry.run(journal, parsed.data as never, { agent });
+    const data = entry.run(journal, parsed.data, { agent });
     return {
       content: [{ type: "text", text: JSON.stringify(ok(data), null, 2) }],
     };

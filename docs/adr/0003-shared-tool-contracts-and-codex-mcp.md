@@ -20,4 +20,11 @@ on top of it, keeping opencode native:
 
 Both adapters remain thin registrations over `tools.ts`; all unique behavior lives in `journal.ts`.
 
+The plugin subtree is dependency-free: `plugin/src/schema.ts` is a small internal schema module
+(string/number/enum/optional fields with `validate()` and `toJsonSchema()`) that `tools.ts` and
+`mcp.ts` use instead of zod. The opencode adapter (`src/index.ts`) is the only zod consumer — the
+`@opencode-ai/plugin` SDK's native `tool({ args })` format requires zod shapes — so the standalone
+Codex plugin copy needs no `node_modules` and works from any distribution path (personal install,
+cache snapshot, git marketplace).
+
 Status: accepted

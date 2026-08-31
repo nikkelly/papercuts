@@ -176,6 +176,9 @@ and read the same journal with the same `--agent codex` attribution semantics as
 The CLI remains the standalone/CI surface and stays the line the shared `AGENTS.md` pen uses
 for Codex, so instructions never hardcode `mcp__` names that vanish when the plugin is absent.
 
+The plugin subtree is self-contained — zero runtime dependencies — so the MCP server and CLI work
+from plain copies (personal install, codex cache snapshot, or git marketplace) with no install step.
+
 Beyond `add`/`list`/`resolve`/`remove`, the CLI shares the TUI mute state:
 `papercuts mute|unmute|toggle` hide or show the opencode sidebar section for the
 repository, and `papercuts status` reports it.
