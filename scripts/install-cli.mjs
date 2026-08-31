@@ -2,6 +2,7 @@
 import { existsSync, lstatSync, mkdirSync, readlinkSync, symlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const CLI_SOURCE = join(REPO_ROOT, "plugin", "bin", "papercuts.mjs");
@@ -59,4 +60,6 @@ function main() {
   if (status !== 0) process.exitCode = status;
 }
 
-main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

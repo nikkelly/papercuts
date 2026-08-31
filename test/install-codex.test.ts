@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { marketplaceEntry, mergeMarketplace, PAPERCUTS_ENTRY } from "../scripts/codex-marketplace.mjs";
@@ -127,4 +129,14 @@ test("removeStaleNodeModules is a no-op when there is no node_modules", () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("importing the codex installer does not run main() or set a failing exit code", () => {
+  const installer = fileURLToPath(new URL("../scripts/install-codex-plugin.mjs", import.meta.url));
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", `await import("${installer}")`],
+    { encoding: "utf8", env: { ...process.env, PATH: "" } },
+  );
+  assert.equal(result.status, 0, result.stderr);
 });

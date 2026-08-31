@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { copyTree, readJsonOrDefault, runCommand, writeJson } from "../shared/install.mjs";
 import { mergeMarketplace, PAPERCUTS_ENTRY } from "./codex-marketplace.mjs";
@@ -153,4 +154,6 @@ function main() {
   if (status !== 0) process.exitCode = status;
 }
 
-main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}
