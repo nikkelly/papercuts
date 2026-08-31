@@ -1,14 +1,9 @@
 #!/usr/bin/env node
 import { errorEnvelope, exitCodeFor, ok } from "../src/envelope.ts";
 import {
+  Journal,
   PapercutsError,
-  addPapercut,
-  listPapercuts,
-  papercutStatus,
-  removePapercut,
-  resolvePapercut,
-  setMuted,
-} from "../src/store.ts";
+} from "../src/journal.ts";
 
 function usage() {
   console.error(`Usage:
@@ -88,6 +83,7 @@ function output(data) {
 
 function main(argv = process.argv.slice(2)) {
   const [command, ...rest] = argv;
+  const journal = Journal.open({ startDirectory: process.cwd() });
   switch (command) {
     case "add": {
       const { flags, positionals } = parseFlags(rest, [
@@ -97,14 +93,13 @@ function main(argv = process.argv.slice(2)) {
         "exit",
         "agent",
       ]);
-      return addPapercut({
+      return journal.add({
         text: positionals.join(" "),
         tag: flags.tag,
         severity: flags.severity === undefined ? undefined : severity(flags.severity),
         cmd: flags.cmd,
         exitCode: flags.exit === undefined ? undefined : integer(flags.exit, "exit"),
         agent: flags.agent,
-        startDirectory: process.cwd(),
       });
     }
     case "list": {
@@ -112,13 +107,12 @@ function main(argv = process.argv.slice(2)) {
       if (flags.status !== undefined && !["open", "resolved", "all"].includes(flags.status)) {
         throw new PapercutsError("invalid_argument", `invalid status '${flags.status}'`);
       }
-      return listPapercuts({
+      return journal.list({
         status: flags.status,
         tag: flags.tag,
         severity: flags.severity === undefined ? undefined : severity(flags.severity),
         limit: flags.limit === undefined ? undefined : Math.max(1, integer(flags.limit, "limit")),
         agent: flags.agent,
-        startDirectory: process.cwd(),
       });
     }
     case "resolve": {
@@ -126,11 +120,10 @@ function main(argv = process.argv.slice(2)) {
       if (positionals.length !== 1) {
         throw new PapercutsError("invalid_argument", "resolve takes exactly one ID prefix");
       }
-      return resolvePapercut({
+      return journal.resolve({
         idPrefix: positionals[0],
         note: flags.note,
         agent: flags.agent,
-        startDirectory: process.cwd(),
       });
     }
     case "remove": {
@@ -138,28 +131,20 @@ function main(argv = process.argv.slice(2)) {
       if (positionals.length !== 1) {
         throw new PapercutsError("invalid_argument", "remove takes exactly one ID prefix");
       }
-      return removePapercut({ idPrefix: positionals[0], agent: flags.agent, startDirectory: process.cwd() });
+      return journal.remove({ idPrefix: positionals[0], agent: flags.agent });
     }
     case "mute":
     case "unmute": {
       const { flags } = parseFlags(rest, ["agent"]);
-      return setMuted({
-        muted: command === "mute",
-        agent: flags.agent,
-        startDirectory: process.cwd(),
-      });
+      return journal.setMuted(command === "mute", { agent: flags.agent });
     }
     case "toggle": {
       const { flags } = parseFlags(rest, ["agent"]);
-      return setMuted({
-        muted: !papercutStatus({ startDirectory: process.cwd() }).muted,
-        agent: flags.agent,
-        startDirectory: process.cwd(),
-      });
+      return journal.setMuted(!journal.status().muted, { agent: flags.agent });
     }
     case "status": {
       parseFlags(rest, []);
-      return papercutStatus({ startDirectory: process.cwd() });
+      return journal.status();
     }
     default:
       usage();

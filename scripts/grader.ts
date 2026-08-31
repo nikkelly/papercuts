@@ -1,4 +1,4 @@
-import { foldBytes, type ListItem } from "../plugin/src/store.ts";
+import { fold, type ListItem } from "../plugin/src/journal.ts";
 
 export type Expectation = "friction" | "clean" | "ambiguous";
 
@@ -9,7 +9,7 @@ export interface ParsedJournal {
 }
 
 export function parseJournal(bytes: Buffer): ParsedJournal {
-  const folded = foldBytes(bytes);
+  const folded = fold(bytes);
   return {
     items: folded.items,
     removedCount: folded.removedIds.size,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { CutRecord, ListItem, Severity } from "../plugin/src/store.ts";
+import type { CutRecord, ListItem, Severity } from "../plugin/src/journal.ts";
 import {
   breakdownLine,
   collapsible,

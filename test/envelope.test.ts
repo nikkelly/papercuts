@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { errorEnvelope, exitCodeFor, ok } from "../plugin/src/envelope.ts";
-import { PapercutsError } from "../plugin/src/store.ts";
+import { PapercutsError } from "../plugin/src/journal.ts";
 import papercutsPlugin from "../src/index.ts";
 
 const CLI_PATH = fileURLToPath(new URL("../plugin/bin/papercuts.mjs", import.meta.url));

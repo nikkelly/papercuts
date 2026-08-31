@@ -4,13 +4,9 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { ok } from "../plugin/src/envelope.ts";
 import {
+  Journal,
   PapercutsError,
-  addPapercut,
-  listPapercuts,
-  removePapercut,
-  resolvePapercut,
-  setMuted,
-} from "../plugin/src/store.ts";
+} from "../plugin/src/journal.ts";
 
 function startDirectory(context: { worktree?: string; directory?: string }): string {
   const candidates = [context.directory, context.worktree];
@@ -36,6 +32,10 @@ async function run(execute: () => unknown): Promise<string> {
   } catch (error) {
     return fail(error);
   }
+}
+
+function journalFor(context: { worktree?: string; directory?: string }): Journal {
+  return Journal.open({ startDirectory: startDirectory(context) });
 }
 
 export const papercutsPlugin = (async () => ({
@@ -64,13 +64,12 @@ export const papercutsPlugin = (async () => ({
       },
       async execute(args, context) {
         return run(() =>
-          addPapercut({
+          journalFor(context).add({
             text: args.text,
             tag: args.tag,
             severity: args.severity,
             cmd: args.cmd,
             exitCode: args.exitCode,
-            startDirectory: startDirectory(context),
           }),
         );
       },
@@ -92,12 +91,11 @@ export const papercutsPlugin = (async () => ({
       },
       async execute(args, context) {
         return run(() =>
-          listPapercuts({
+          journalFor(context).list({
             status: args.status,
             tag: args.tag,
             severity: args.severity,
             limit: args.limit,
-            startDirectory: startDirectory(context),
           }),
         );
       },
@@ -111,10 +109,9 @@ export const papercutsPlugin = (async () => ({
       },
       async execute(args, context) {
         return run(() =>
-          resolvePapercut({
+          journalFor(context).resolve({
             idPrefix: args.id,
             note: args.note,
-            startDirectory: startDirectory(context),
           }),
         );
       },
@@ -127,9 +124,8 @@ export const papercutsPlugin = (async () => ({
       },
       async execute(args, context) {
         return run(() =>
-          removePapercut({
+          journalFor(context).remove({
             idPrefix: args.id,
-            startDirectory: startDirectory(context),
           }),
         );
       },
@@ -140,7 +136,7 @@ export const papercutsPlugin = (async () => ({
       args: {},
       async execute(_args, context) {
         return run(() =>
-          setMuted({ muted: true, startDirectory: startDirectory(context) }),
+          journalFor(context).setMuted(true),
         );
       },
     }),
@@ -150,7 +146,7 @@ export const papercutsPlugin = (async () => ({
       args: {},
       async execute(_args, context) {
         return run(() =>
-          setMuted({ muted: false, startDirectory: startDirectory(context) }),
+          journalFor(context).setMuted(false),
         );
       },
     }),

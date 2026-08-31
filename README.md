@@ -311,7 +311,7 @@ model with `PAPERCUTS_EVAL_MODEL`; per-run timeout via `PAPERCUTS_EVAL_TIMEOUT_M
 
 One shared journal core, thin host adapters:
 
-- `plugin/src/store.ts` — canonical store: discovery, content-addressed IDs, tolerant fold
+- `plugin/src/journal.ts` — the journal module: path discovery, content-addressed IDs, tolerant fold, and the mutable operations behind a single `Journal.open()` seam
 - `plugin/src/envelope.ts` — shared output contract: `{ok:true,data}` on success,
   `{ok:false,error:{code,message,candidates?}}` on failure, and the CLI exit-code mapping
 - `src/index.ts` — opencode adapter (native tools via `@opencode-ai/plugin`)

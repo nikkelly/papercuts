@@ -1,4 +1,4 @@
-import type { ListItem, Severity } from "../plugin/src/store.ts";
+import type { ListItem, Severity } from "../plugin/src/journal.ts";
 
 export interface FoldedPapercuts {
   items: readonly ListItem[];

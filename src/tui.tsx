@@ -1,9 +1,9 @@
 /** @jsxImportSource @opentui/solid */
-import { readFileSync, watch, type FSWatcher } from "node:fs";
+import { watch, type FSWatcher } from "node:fs";
 import { basename, dirname } from "node:path";
 import type { TuiPluginApi, TuiPluginModule, TuiTheme } from "@opencode-ai/plugin/tui";
 import { createSignal, For, Show } from "solid-js";
-import { discoverLogPath, foldBytes, setMuted } from "../plugin/src/store.ts";
+import { Journal } from "../plugin/src/journal.ts";
 import {
   collapsible,
   computeStats,
@@ -24,13 +24,9 @@ interface JournalView {
   muted: boolean;
 }
 
-function readView(journalPath: string): JournalView | null {
-  try {
-    const folded = foldBytes(readFileSync(journalPath));
-    return { stats: computeStats(folded), muted: folded.muted };
-  } catch {
-    return null;
-  }
+function readView(journal: Journal): JournalView | null {
+  const preview = journal.preview();
+  return { stats: computeStats(preview), muted: preview.muted };
 }
 
 function themeColor(ctx: SlotContext, value: StatsLevel) {
@@ -42,11 +38,12 @@ function themeColor(ctx: SlotContext, value: StatsLevel) {
 
 export const tui = async (api: TuiPluginApi) => {
   const root = api.state.path.worktree || api.state.path.directory;
-  const journalPath = discoverLogPath(root).path;
+  const journal = Journal.open({ startDirectory: root });
+  const journalPath = journal.path;
 
-  const [view, setView] = createSignal<JournalView | null>(readView(journalPath));
+  const [view, setView] = createSignal<JournalView | null>(readView(journal));
 
-  const refresh = () => setView(readView(journalPath));
+  const refresh = () => setView(readView(journal));
 
   let debounce: ReturnType<typeof setTimeout> | undefined;
   const scheduleRefresh = () => {
@@ -69,7 +66,7 @@ export const tui = async (api: TuiPluginApi) => {
   const toggle = () => {
     try {
       const muted = !(view()?.muted ?? false);
-      setMuted({ muted, startDirectory: root, agent: "tui" });
+      journal.setMuted(muted, { agent: "tui" });
       refresh();
       api.ui.toast({
         variant: muted ? "warning" : "success",

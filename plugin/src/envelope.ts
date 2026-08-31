@@ -1,4 +1,4 @@
-import { PapercutsError } from "./store.ts";
+import { PapercutsError } from "./journal.ts";
 
 export function ok(data: unknown): { ok: true; data: unknown } {
   return { ok: true, data };
