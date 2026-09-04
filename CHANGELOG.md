@@ -1,7 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-09-04)
 
+- Renamed to `papercuts`: the project serves both opencode and Codex, so the
+  opencode-only name retired. Package name, repository URLs, marketplace manifest,
+  plugin metadata, and docs now point at `github.com/nikkelly/papercuts`; the TUI
+  plugin id is `papercuts-tui`.
+- `install:all` hardening: steps run CLI → Codex → opencode so codex-only machines
+  get everything usable before any opencode-specific failure; an absent host is a
+  `SKIPPED` note with exit 0 instead of failing the run; any other failure stops the
+  run immediately. The final summary prints the paste-ready AGENTS.md pen, the
+  verification command, and restart reminders.
+- `install:codex` skips cleanly when the `codex` CLI is not on PATH, and surfaces
+  nonzero codex command exits (with stderr) instead of silently reporting success;
+  `codex plugin remove` stays best-effort for fresh installs.
+- `install:opencode` reports a JSONC config as a clean status-1 error with guidance
+  instead of crashing with an uncaught stack trace.
+- `skill/` renamed to `skills/` to match `plugin/skills/`; opencode config paths and
+  the installer updated.
 - Dependency-free standalone plugin: `plugin/src/tools.ts` and `plugin/src/mcp.ts` now build and
   validate tool contracts with a small internal module (`plugin/src/schema.ts`) instead of zod, so
   the plugin subtree ships with zero runtime dependencies. The MCP server runs from any copied

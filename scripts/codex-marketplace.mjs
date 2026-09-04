@@ -4,7 +4,7 @@ export function marketplaceEntry(mode) {
       name: "papercuts",
       source: {
         source: "git-subdir",
-        url: "https://github.com/nikkelly/opencode-papercuts.git",
+        url: "https://github.com/nikkelly/papercuts.git",
         path: "./plugin",
       },
       policy: {

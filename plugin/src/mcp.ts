@@ -6,7 +6,7 @@ import { tools } from "./tools.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
 const SERVER_NAME = "papercuts";
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.2.0";
 
 const startDirectory = process.env.PAPERCUTS_START_DIR?.trim() || process.cwd();
 const agent = process.env.PAPERCUTS_MCP_AGENT?.trim() || "codex";

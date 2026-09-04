@@ -9,7 +9,7 @@ import test from "node:test";
 const CLI_PATH = fileURLToPath(new URL("../plugin/bin/papercuts.mjs", import.meta.url));
 
 function createTemporaryRepository() {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-cli-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-cli-"));
   mkdirSync(join(directory, ".git"));
   return directory;
 }
@@ -147,7 +147,7 @@ test("cli rejects invalid usage without creating a file", () => {
 });
 
 function createTemporaryDirectory() {
-  return mkdtempSync(join(tmpdir(), "opencode-papercuts-cli-nogit-"));
+  return mkdtempSync(join(tmpdir(), "papercuts-cli-nogit-"));
 }
 
 test("cli resolve reports not_found with exit code 2 for unknown prefixes", () => {

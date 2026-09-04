@@ -10,7 +10,7 @@ import test from "node:test";
 const MCP_PATH = fileURLToPath(new URL("../plugin/src/mcp.ts", import.meta.url));
 
 function createTemporaryRepository() {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-mcp-"));
   mkdirSync(join(directory, ".git"));
   return directory;
 }

@@ -16,7 +16,7 @@ Do not file failures that ARE the assigned task itself (e.g. a test you were tol
 Severity: minor (default) for annoyances, major for time sinks, blocker for hard walls.
 
 This repo dogfoods its own plugin: the journal lives at `.papercuts.jsonl` here. When
-asked to review papercuts, follow `skill/review-papercuts/SKILL.md`.
+asked to review papercuts, follow `skills/review-papercuts/SKILL.md`.
 
 ## Conventions
 

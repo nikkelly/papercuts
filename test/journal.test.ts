@@ -12,13 +12,13 @@ import {
 const FIXTURE_TS = new Date("2026-08-01T12:00:00.000Z");
 
 function createTemporaryRepository() {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-"));
   mkdirSync(join(directory, ".git"));
   return directory;
 }
 
 function createTemporaryDirectory() {
-  return mkdtempSync(join(tmpdir(), "opencode-papercuts-nogit-"));
+  return mkdtempSync(join(tmpdir(), "papercuts-nogit-"));
 }
 
 function readFile(directory: string, name = ".papercuts.jsonl") {

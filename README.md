@@ -1,4 +1,6 @@
-# opencode-papercuts
+# papercuts
+
+[![ci](https://github.com/nikkelly/papercuts/actions/workflows/ci.yml/badge.svg)](https://github.com/nikkelly/papercuts/actions/workflows/ci.yml)
 
 A complaint box for coding agents — works with **opencode** and **Codex**, sharing one journal per repository.
 
@@ -9,46 +11,67 @@ complaints into durable fixes. Inspired by [treygoff24/papercuts](https://github
 
 ## Quickstart
 
-1. Install for your agent ([opencode](#install-for-opencode) or [Codex](#install-for-codex-plugin)) —
-   or run the [one-command full install](#one-command-full-install) which does both hosts and the CLI.
-2. Put the `papercuts` command on PATH — `npm run install:cli` in this repo (idempotent;
-   also run automatically by `npm run install:codex`). Optional, but lets any shell, and
-   either host, use `papercuts add|list|resolve|remove|mute|status` directly.
-3. Add the [agent instructions](#give-your-agents-the-pen) to your project's `AGENTS.md`
-4. In a new session, say: *"file a papercut: the test runner only worked from apps/web"*
-5. Confirm it landed: `cat .papercuts.jsonl`
-
-That's it — the journal is created on first write, no init step.
-
-## One-command full install
-
-From a clone of this repo, install for **both hosts and the CLI** in one shot:
-
 ```bash
+git clone https://github.com/nikkelly/papercuts.git ~/code/papercuts
+cd ~/code/papercuts
 npm run install:all
 ```
 
-Run from any project directory — or target opencode's global config instead of the
-current project with `--global`:
+That installs for **both hosts and the CLI** in three idempotent steps — no `npm install`
+needed, the installers are dependency-free and resolve their own paths. Then:
 
-```bash
-node ~/code/opencode-papercuts/scripts/install-all.mjs --global
+1. Paste the [agent instructions](#give-your-agents-the-pen) into your project's `AGENTS.md`
+2. Restart opencode; start a new Codex session
+3. Say *"file a papercut: the test runner only worked from apps/web"*
+4. Confirm it landed: `papercuts list`
+
+Only one host? `npm run install:all` skips hosts that aren't installed (look for
+`SKIPPED` in the output) and exits clean. `npm run install:opencode` and
+`npm run install:codex` install for a single host.
+
+That's it — the journal is created on first write, no init step.
+
+## Requirements
+
+- **Node 22+** — the CLI and installers run on Node's built-in type stripping
+- **git** — the journal is discovered at the repository root
+- **macOS or Linux** for the CLI symlink (`~/.local/bin`); on Windows, run the CLI
+  directly: `node <clone>/plugin/bin/papercuts.mjs`
+- **opencode and/or Codex** — one is enough; the journal is shared
+
+## Give your agents the pen
+
+Agent behavior is driven by instructions, not by installation — paste this into your
+project's `AGENTS.md`:
+
+```
+## Papercuts
+
+MANDATORY: whenever a command you ran fails unexpectedly — a nonzero exit you could not
+have predicted from the task — you MUST call out before doing anything else, then push
+on without stopping. Same for broken links, misleading docs, and footgun configs:
+
+- If the `papercuts` command is on PATH, use it (works in either host):
+      papercuts add "what you hit and what would have prevented it" --tag <area> --agent codex
+- In opencode, the native tool also works:
+      papercuts_add(text="what you hit and what would have prevented it", tag="<area>")
+- In Codex with the plugin installed:
+      node <plugin-root>/bin/papercuts.mjs add "..." --tag <area> --agent codex
+
+Do not file failures that ARE the assigned task itself (e.g. a test you were told to fix).
+Severity: minor (default) for annoyances, major for time sinks, blocker for hard walls.
+Never include secrets.
 ```
 
-The three steps, each idempotent and safe to re-run:
+The first line works in both hosts with no placeholders — `install:all` puts the
+`papercuts` command on PATH. In Codex you can also prefer the plugin's MCP tools
+(`mcp__papercuts__add`) when they are available; the skills bundled with the plugin
+explain the precedence.
 
-1. **opencode** (`install:opencode`) — merges `src/index.ts` and `skill/` into the
-   project's `opencode.json` (or `~/.config/opencode/` with `--global`), and `src/tui.tsx`
-   into `.opencode/tui.json` (or `~/.config/opencode/tui.json`). Existing config keys and
-   plugin entries are preserved; JSONC configs are left alone with an error message.
-2. **CLI** (`install:cli`) — links the `papercuts` command into `~/.local/bin`.
-3. **Codex** (`install:codex`) — copies the plugin tree to `~/.codex/plugins/papercuts`
-   and registers it in your personal marketplace.
+Then periodically have an agent review the journal — "review papercuts" — fix root
+causes, and resolve what's verified fixed.
 
-Then restart opencode and start a new Codex session. The individual steps are also
-exposed as `npm run install:opencode`, `install:cli`, and `install:codex`.
-
-## Tools
+## What you get
 
 | Tool | Purpose |
 | --- | --- |
@@ -63,6 +86,11 @@ Every surface emits the same envelope: success is `{"ok":true,"data":{...}}`, fa
 `{"ok":false,"error":{"code","message"[,"candidates"]}}` (the opencode tools throw errors
 instead of emitting `ok:false`, which opencode renders natively). The CLI maps error codes
 to exit codes: 1 invalid input or usage, 2 not found or ambiguous ID prefix, 3 I/O error.
+
+The same six actions are available three ways: opencode native tools, the Codex MCP
+server (`mcp__papercuts__*`), and the zero-dependency CLI (`papercuts add|list|resolve|remove|mute|unmute|toggle|status`).
+All of them write the same journal with the same attribution semantics — entries record
+which host filed them (`opencode` or `codex`).
 
 ## Storage
 
@@ -86,12 +114,17 @@ complaints show up in `git diff` and travel with the repo. No server, no telemet
 
 ## Install for opencode
 
-This project lives on GitHub and is not published to npm — clone it somewhere stable
-and point your config at the file. From the clone, `npm run install:opencode` does this
-wiring for you (current project; `--global` for `~/.config/opencode`); doing it by hand:
+`npm run install:opencode` wires everything for opencode (run from the clone; add
+`--global` to target `~/.config/opencode` instead of the current project). It merges
+`src/index.ts` and `skills/` into your `opencode.json`, and `src/tui.tsx` into
+`.opencode/tui.json` — preserving existing config keys and plugin entries. JSONC
+configs are left alone with an error message.
+
+Doing it by hand (if you cloned somewhere other than `~/code/papercuts`, substitute
+your path — or prefer the installer, which resolves it for you):
 
 ```bash
-git clone https://github.com/nikkelly/opencode-papercuts.git ~/code/opencode-papercuts
+git clone https://github.com/nikkelly/papercuts.git ~/code/papercuts
 ```
 
 Add to your project's `opencode.json` (or `~/.config/opencode/opencode.json` to enable everywhere):
@@ -99,42 +132,16 @@ Add to your project's `opencode.json` (or `~/.config/opencode/opencode.json` to 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["~/code/opencode-papercuts/src/index.ts"]
+  "plugin": ["~/code/papercuts/src/index.ts"],
+  "skills": { "paths": ["~/code/papercuts/skills"] }
 }
 ```
 
 Only top-level `.ts`/`.js` files in `.opencode/plugin/` or `.opencode/plugins/` are
 auto-discovered — subdirectories are not. For nested layouts (e.g.
-`.opencode/plugins/my-plugin/index.ts`), list the file explicitly:
-
-```json
-{
-  "plugin": [".opencode/plugins/my-plugin/index.ts"]
-}
-```
+`.opencode/plugins/my-plugin/index.ts`), list the file explicitly.
 
 Restart opencode after changing plugins — config is loaded once at startup.
-
-The review skill ships in `skill/` — an opencode wrapper whose canonical methodology
-lives in the plugin's skills dir (see [Close the loop](#close-the-loop-review-papercuts));
-add its path under `"skills": {"paths": [...]}`.
-
-### The `papercuts` command
-
-The CLI at `plugin/bin/papercuts.mjs` is zero-dependency and works on any machine with
-Node 22+; it is the Codex-side surface and the terminal surface for opencode. Install it
-once on your PATH (from a clone of this repo):
-
-```bash
-npm run install:cli
-```
-
-This creates `~/.local/bin/papercuts` as a symlink to the repo copy (so `git pull` keeps
-the command fresh — no reinstall needed). Idempotent: re-run any time. It refuses to
-clobber a non-papercuts file at the target; point it elsewhere with `PAPERCUTS_BIN_DIR`.
-`npm run install:codex` runs the same step for you. `npm link` / `npm install -g .`
-also work from a clone, via the `bin` entry in package.json. The package is not
-published to npm, so `npx papercuts` is not available.
 
 ### TUI sidebar widget
 
@@ -154,39 +161,33 @@ survives restarts, and is shared with the Codex CLI (`papercuts mute|unmute|togg
 Muted sections stay hidden even while agents keep filing.
 
 Enable it by listing the TUI module in `.opencode/tui.json` (or
-`~/.config/opencode/tui.json` for everywhere):
+`~/.config/opencode/tui.json` for everywhere) — `install:opencode` does this too:
 
 ```json
 {
   "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["~/code/opencode-papercuts/src/tui.tsx"]
+  "plugin": ["~/code/papercuts/src/tui.tsx"]
 }
 ```
 
 ## Install for Codex (plugin)
 
-The same journal works in Codex through a plugin that bundles an MCP server and two skills
-(`papercuts` for capture, `review-papercuts` for triage), plus a zero-dependency CLI
-(`bin/papercuts.mjs`).
+`npm run install:codex` copies the plugin tree to `~/.codex/plugins/papercuts` and
+registers it in your personal marketplace, headlessly (idempotent, safe to re-run).
+If the `codex` CLI is not installed, it skips with a message instead of failing.
 
-**Codex MCP tools.** The plugin ships an MCP stdio server (`plugin/.mcp.json` →
-`plugin/src/mcp.ts`) so a Codex session can call the same structured tools natively — they
-surface as `mcp__papercuts__add`, `mcp__papercuts__list`, `mcp__papercuts__resolve`,
-`mcp__papercuts__remove`, `mcp__papercuts__mute`, and `mcp__papercuts__unmute`. These write
-and read the same journal with the same `--agent codex` attribution semantics as the CLI.
-The CLI remains the standalone/CI surface and stays the line the shared `AGENTS.md` pen uses
-for Codex, so instructions never hardcode `mcp__` names that vanish when the plugin is absent.
+What the plugin bundles:
 
-The plugin subtree is self-contained — zero runtime dependencies — so the MCP server and CLI work
-from plain copies (personal install, codex cache snapshot, or git marketplace) with no install step.
-
-Beyond `add`/`list`/`resolve`/`remove`, the CLI shares the TUI mute state:
-`papercuts mute|unmute|toggle` hide or show the opencode sidebar section for the
-repository, and `papercuts status` reports it.
+- An **MCP stdio server** (`plugin/.mcp.json` → `plugin/src/mcp.ts`) so a Codex session
+  can call the same structured tools natively — `mcp__papercuts__add`, `mcp__papercuts__list`,
+  `mcp__papercuts__resolve`, `mcp__papercuts__remove`, `mcp__papercuts__mute`,
+  `mcp__papercuts__unmute` — with the same journal and attribution semantics as the CLI.
+- **Two skills**: `papercuts` (capture) and `review-papercuts` (triage) — installed with
+  the plugin, nothing extra to configure.
+- The **zero-dependency CLI** (`bin/papercuts.mjs`), the standalone/CI surface.
 
 Codex reads `AGENTS.md` natively; combined with the bundled skills it will file papercuts
-as it works. Entries carry agent attribution (`--agent codex`) so you can tell which host
-filed what. Requires Node 22+ on PATH for type-stripped execution of the CLI.
+as it works. Entries carry agent attribution so you can tell which host filed what.
 
 ### Public / shared repos (Git marketplace)
 
@@ -194,31 +195,9 @@ If the repo is public (or you're sharing with a team), register it as a marketpl
 install from it:
 
 ```bash
-codex plugin marketplace add nikkelly/opencode-papercuts
+codex plugin marketplace add nikkelly/papercuts
 # then: /plugins → Papercuts → install, and start a new session
 ```
-
-### Private / local development (one-command installer)
-
-If the repo is private — or you're hacking on this plugin locally — don't register a
-public marketplace. Use the bundled installer, which keeps everything offline on your
-machine:
-
-```bash
-npm run install:codex
-```
-
-That single command (idempotent — safe to re-run):
-
-1. copies the `plugin/` tree to `~/.codex/plugins/papercuts`,
-2. ensures a `local` source entry in your personal marketplace
-   (`~/.agents/plugins/marketplace.json`, merging, never clobbering other entries),
-3. registers the `personal` marketplace if it isn't already listed,
-4. (re)installs `papercuts@personal` headlessly — no `/plugins` menu needed,
-5. prints the resolved CLI path and the exact `AGENTS.md` pen line to paste.
-
-Then start a new Codex session. The installer only targets the Codex CLI config;
-it does not touch the opencode side.
 
 ### Updating the plugin
 
@@ -229,22 +208,18 @@ The two hosts update differently, because opencode loads live while Codex copies
 - **Codex**: `git pull`, then re-run `npm run install:codex` (it reinstalls,
   refreshing the installed copy), then start a new session.
 
-For a locally developed plugin like this one that both hosts use, the whole loop is
-`git pull && npm run install:codex` on the Codex side, and just `git pull` + restart on
-the opencode side.
-
 ## Close the loop: review papercuts
 
 Logging is only half the point. Both hosts ship a `review-papercuts` workflow that
 triages the journal into durable fixes. The canonical methodology lives in the plugin's
 skills dir and is shared by both hosts: `plugin/skills/review-papercuts/SKILL.md` is the
-single source of truth, and the opencode copy in `skill/` is a thin wrapper around it.
+single source of truth, and the opencode copy in `skills/` is a thin wrapper around it.
 
-- **opencode**: the bundled skill directory — add to your config:
+- **opencode**: add the bundled skill directory to your config:
   ```json
-  { "skills": { "paths": ["~/code/opencode-papercuts/skill"] } }
+  { "skills": { "paths": ["~/code/papercuts/skills"] } }
   ```
-  Wrapper: [`skill/review-papercuts/SKILL.md`](skill/review-papercuts/SKILL.md) →
+  Wrapper: [`skills/review-papercuts/SKILL.md`](skills/review-papercuts/SKILL.md) →
   canonical: [`plugin/skills/review-papercuts/SKILL.md`](plugin/skills/review-papercuts/SKILL.md).
 - **Codex**: bundled in the plugin's `skills/review-papercuts` — installed with the plugin,
   nothing extra to configure.
@@ -252,37 +227,6 @@ single source of truth, and the opencode copy in `skill/` is a thin wrapper arou
 Then ask an agent to "review papercuts" — it will dedupe entries, validate the friction
 is real, turn each validated item into a repo change / workflow change / agent instruction /
 guardrail, and only then resolve or remove.
-
-## Give your agents the pen
-
-Agent behavior is driven by instructions, not by installation — paste this into your
-project's `AGENTS.md` (both hosts read it; keep both lines so either host knows its path):
-
-```
-## Papercuts
-
-MANDATORY: whenever a command you ran fails unexpectedly — a nonzero exit you could not
-have predicted from the task — you MUST call out before doing anything else, then push
-on without stopping. Same for broken links, misleading docs, and footgun configs:
-
-- In opencode, use the native tool:
-      papercuts_add(text="what you hit and what would have prevented it", tag="<area>")
-- In Codex, use the bundled plugin CLI:
-      node <plugin-root>/bin/papercuts.mjs add "what you hit and what would have prevented it" --tag <area> --agent codex
-
-Do not file failures that ARE the assigned task itself (e.g. a test you were told to fix).
-Severity: minor (default) for annoyances, major for time sinks, blocker for hard walls.
-Never include secrets.
-```
-
-Then periodically have an agent review the journal — "review papercuts" — fix root
-causes, and resolve what's verified fixed.
-
-> **Codex path hint:** in the snippet above, replace `<plugin-root>` with the actual path.
-> If you installed via `npm run install:codex`, that command prints the exact pen line
-> (resolved to `~/.codex/plugins/papercuts`) for you to paste. If you ran
-> `npm run install:cli`, the `papercuts` command is on PATH and the short pen works in
-> either host: `papercuts add "<text>" --tag <area> --agent codex`.
 
 ## Development
 
@@ -294,7 +238,7 @@ npm run typecheck # tsc --noEmit over src/, plugin/src/, scripts/, and test/
 
 The tool-surface evaluation scenarios (parallel appends, corrupted journals, filter
 combinations, and more) run as ordinary tests in `test/eval.test.ts`, so they are part
-of `npm test` — there is no separate `npm run eval` step anymore.
+of `npm test` — there is no separate `npm run eval` step.
 
 ### Behavioral evaluation (trigger rate)
 
@@ -332,7 +276,24 @@ One shared journal core, thin host adapters:
 - `src/tui.tsx` + `src/tui-stats.ts` — opencode TUI sidebar widget (reads the same journal)
 - `plugin/src/mcp.ts` — Codex MCP adapter (zero-dependency stdio MCP server over the shared tools, agent defaults to `codex`)
 - `plugin/bin/papercuts.mjs` + `plugin/skills/` — Codex CLI + skill adapter (skills-guided CLI);
-  `review-papercuts` is the canonical review methodology, with a thin opencode wrapper in `skill/`
+  `review-papercuts` is the canonical review methodology, with a thin opencode wrapper in `skills/`
 
 Both adapters write identical `.papercuts.jsonl` records; entries record the filing agent.
 A fix to the store lands in all hosts with one commit.
+
+## Troubleshooting
+
+- **Plugin not loading in opencode** — config is read once at startup; restart opencode
+  after any config change.
+- **`papercuts: command not found`** — re-run `npm run install:cli` and make sure
+  `~/.local/bin` is on PATH (override the target with `PAPERCUTS_BIN_DIR`).
+- **Journal landed in an unexpected place** — it anchors at the git repository root;
+  set `PAPERCUTS_FILE` to pin a different path.
+- **TUI section missing** — add `src/tui.tsx` to `.opencode/tui.json` (or run
+  `npm run install:opencode`) and restart opencode.
+- **`install:all` printed `SKIPPED`** — that host's CLI isn't installed; install it,
+  then re-run `npm run install:opencode` or `npm run install:codex`.
+
+## License
+
+[MIT](LICENSE)

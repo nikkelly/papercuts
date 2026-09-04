@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "private": true,
-  "name": "opencode-papercuts",
-  "version": "0.1.0",
-  "description": "An opencode plugin giving agents a complaint box: log, list, resolve, and remove papercuts in an append-only JSONL journal",
+  "name": "papercuts",
+  "version": "0.2.0",
+  "description": "A complaint box for coding agents — opencode and Codex plugins plus a CLI over one append-only JSONL journal per repository",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",
@@ -18,12 +18,15 @@
   },
   "files": [
     "src",
-    "skill",
+    "skills",
     "plugin"
   ],
   "keywords": [
     "opencode",
     "opencode-plugin",
+    "codex",
+    "codex-plugin",
+    "mcp",
     "ai-agents",
     "papercuts",
     "friction-log",
@@ -31,7 +34,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nikkelly/opencode-papercuts.git"
+    "url": "git+https://github.com/nikkelly/papercuts.git"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

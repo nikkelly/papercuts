@@ -8,7 +8,7 @@ import { z } from "zod";
 import papercutsPlugin from "../src/index.ts";
 
 function createTemporaryRepository() {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-eval-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-eval-"));
   mkdirSync(join(directory, ".git"));
   return directory;
 }
@@ -80,7 +80,7 @@ test("corrupted journal degrades gracefully for the reviewer", async () => {
 
 test("PAPERCUTS_FILE override routes tool writes to a private log", async () => {
   const directory = createTemporaryRepository();
-  const override = mkdtempSync(join(tmpdir(), "opencode-papercuts-eval-file-"));
+  const override = mkdtempSync(join(tmpdir(), "papercuts-eval-file-"));
   const previous = process.env.PAPERCUTS_FILE;
   process.env.PAPERCUTS_FILE = join(override, "private.jsonl");
   try {

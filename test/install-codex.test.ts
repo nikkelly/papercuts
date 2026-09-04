@@ -56,7 +56,7 @@ test("marketplaceEntry('git-subdir') mirrors the tracked repo manifest entry", (
     name: "papercuts",
     source: {
       source: "git-subdir",
-      url: "https://github.com/nikkelly/opencode-papercuts.git",
+      url: "https://github.com/nikkelly/papercuts.git",
       path: "./plugin",
     },
     policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
@@ -82,7 +82,7 @@ test("mergeMarketplace replaces an existing papercuts entry regardless of manife
 });
 
 test("pinMcpServerPath rewrites the copied .mcp.json args[0] to an absolute path", () => {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-mcp-"));
   try {
     const target = resolve(join(directory, "installed"));
     mkdirSync(join(target, "src"), { recursive: true });
@@ -100,7 +100,7 @@ test("pinMcpServerPath rewrites the copied .mcp.json args[0] to an absolute path
 });
 
 test("removeStaleNodeModules drops a leftover node_modules from the install target", () => {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-mcp-"));
   try {
     const target = resolve(join(directory, "installed"));
     const stale = join(target, "node_modules", "zod");
@@ -118,7 +118,7 @@ test("removeStaleNodeModules drops a leftover node_modules from the install targ
 });
 
 test("removeStaleNodeModules is a no-op when there is no node_modules", () => {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-mcp-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-mcp-"));
   try {
     const target = resolve(join(directory, "installed"));
     mkdirSync(join(target, "src"), { recursive: true });

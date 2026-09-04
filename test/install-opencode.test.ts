@@ -28,7 +28,7 @@ test("install:opencode wires plugin, skills, and TUI into a fresh project", () =
 
     const opencode = JSON.parse(readFileSync(join(project, "opencode.json"), "utf8"));
     assert.ok(opencode.plugin.some((p: string) => p.endsWith("/src/index.ts")));
-    assert.ok(opencode.skills.paths.some((p: string) => p.endsWith("/skill")));
+    assert.ok(opencode.skills.paths.some((p: string) => p.endsWith("/skills")));
 
     const tui = JSON.parse(readFileSync(join(project, ".opencode", "tui.json"), "utf8"));
     assert.ok(tui.plugin.some((p: string) => p.endsWith("/src/tui.tsx")));

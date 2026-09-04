@@ -23,7 +23,7 @@ test("plugin registers all six tools", async () => {
 
 test("session directory wins over a root worktree sentinel from the host", async () => {
   const hooks = await papercutsPlugin();
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-plugin-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-plugin-"));
   mkdirSync(join(directory, ".git"), { recursive: true });
   try {
     const context = {
@@ -49,7 +49,7 @@ test("session directory wins over a root worktree sentinel from the host", async
 
 test("tool execution falls back to process.cwd() when context paths are empty", async () => {
   const hooks = await papercutsPlugin();
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-plugin-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-plugin-"));
   // Pin repo discovery to the fixture: a real .git above tmpdir would otherwise win.
   mkdirSync(join(directory, ".git"), { recursive: true });
   const previousCwd = process.cwd();
@@ -84,7 +84,7 @@ test("tool execution falls back to process.cwd() when context paths are empty", 
 
 test("mute and unmute tools write journal events for the session repository", async () => {
   const hooks = await papercutsPlugin();
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-plugin-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-plugin-"));
   mkdirSync(join(directory, ".git"), { recursive: true });
   try {
     const context = {

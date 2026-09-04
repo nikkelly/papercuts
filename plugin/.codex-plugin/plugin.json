@@ -1,13 +1,13 @@
 {
   "name": "papercuts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Give your agent a complaint box: file, list, resolve, and remove papercuts in an append-only journal at the repository root",
   "author": {
     "name": "Nik Kelly",
     "url": "https://github.com/nikkelly"
   },
-  "homepage": "https://github.com/nikkelly/opencode-papercuts",
-  "repository": "https://github.com/nikkelly/opencode-papercuts",
+  "homepage": "https://github.com/nikkelly/papercuts",
+  "repository": "https://github.com/nikkelly/papercuts",
   "license": "MIT",
   "keywords": ["papercuts", "friction-log", "developer-experience", "agents"],
   "skills": "./skills/",
@@ -19,7 +19,7 @@
     "developerName": "Nik Kelly",
     "category": "Developer tools",
     "capabilities": ["Read", "Write"],
-    "websiteURL": "https://github.com/nikkelly/opencode-papercuts",
+    "websiteURL": "https://github.com/nikkelly/papercuts",
     "defaultPrompt": [
       "File a papercut about the last thing that slowed you down, then keep working",
       "Review the open papercuts and turn them into durable fixes"

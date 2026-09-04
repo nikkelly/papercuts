@@ -6,7 +6,7 @@ import { readJsonOrThrow, writeJson } from "../shared/install.mjs";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const PLUGIN_ENTRY = join(REPO_ROOT, "src", "index.ts");
-const SKILL_DIR = join(REPO_ROOT, "skill");
+const SKILL_DIR = join(REPO_ROOT, "skills");
 const TUI_ENTRY = join(REPO_ROOT, "src", "tui.tsx");
 
 export function targets(globalTarget) {

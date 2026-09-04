@@ -141,5 +141,5 @@ export const tui = async (api: TuiPluginApi) => {
   });
 };
 
-const plugin = { id: "opencode-papercuts-tui", tui } satisfies TuiPluginModule & { id: string };
+const plugin = { id: "papercuts-tui", tui } satisfies TuiPluginModule & { id: string };
 export default plugin;

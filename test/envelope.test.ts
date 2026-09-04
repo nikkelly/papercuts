@@ -13,7 +13,7 @@ import papercutsPlugin from "../src/index.ts";
 const CLI_PATH = fileURLToPath(new URL("../plugin/bin/papercuts.mjs", import.meta.url));
 
 function createTemporaryRepository() {
-  const directory = mkdtempSync(join(tmpdir(), "opencode-papercuts-envelope-"));
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-envelope-"));
   mkdirSync(join(directory, ".git"));
   return directory;
 }
