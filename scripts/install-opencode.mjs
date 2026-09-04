@@ -63,8 +63,14 @@ export function installOpenCode(options = {}) {
   const globalTarget = options.globalTarget ?? false;
   const { opencode, tui } = targets(globalTarget);
   const lines = [];
-  wireOpenCode(opencode, lines);
-  wireTui(tui, lines);
+  try {
+    wireOpenCode(opencode, lines);
+    wireTui(tui, lines);
+  } catch (error) {
+    // A config the installer refuses to rewrite (e.g. JSONC) is a clean,
+    // reported failure — not an uncaught crash with a stack trace.
+    return { status: 1, lines, errors: [error.message] };
+  }
   const scope = globalTarget ? "global (~/.config/opencode)" : `project (${process.cwd()})`;
   lines.push(
     `opencode papercuts installed for ${scope}; restart opencode to pick it up`,

@@ -68,6 +68,9 @@ test("install:opencode fails loudly on a JSONC config", () => {
     const result = runInstaller(project);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /not valid JSON/);
+    assert.match(result.stderr, /add the papercuts entries manually/);
+    // A clean error report, not an uncaught crash: no stack-trace frames.
+    assert.doesNotMatch(result.stderr, /^ +at /m, result.stderr);
   } finally {
     rmSync(project, { recursive: true, force: true });
   }
