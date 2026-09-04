@@ -30,17 +30,3 @@ asked to review papercuts, follow `skill/review-papercuts/SKILL.md`.
 - Store semantics are append-only: never rewrite or truncate the journal in code;
   corrections are new events.
 - Every behavior change ships with a regression test that fails without the change.
-
-## Agent skills
-
-### Issue tracker
-
-Issues are tracked as markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Five canonical roles with default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

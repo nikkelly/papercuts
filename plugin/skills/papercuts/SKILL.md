@@ -11,7 +11,7 @@ description: File and manage papercuts — small, concrete moments of workflow f
 
 Papercuts live in an append-only journal, `.papercuts.jsonl`, at the repository root. The bundled CLI reads and writes it.
 
-The CLI sits at `bin/papercuts.mjs` inside this plugin's folder — the directory containing this plugin's `.codex-plugin/plugin.json`, two levels up from this skill file. Run it with Node 23+ (Node 22 works with `--experimental-strip-types`):
+The CLI sits at `bin/papercuts.mjs` inside this plugin's folder — the directory containing this plugin's `.codex-plugin/plugin.json`, two levels up from this skill file. Run it with Node 22+ (type stripping is enabled by default):
 
 ```bash
 node <plugin-root>/bin/papercuts.mjs <command> ...

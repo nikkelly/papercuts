@@ -72,7 +72,6 @@ test("add anchors the journal to the working directory outside a git repository"
     // whether a real ancestor of tmpdir (e.g. /tmp) happens to contain .git.
     const withNoRepo = Journal.open({ startDirectory: workdir, exists: () => false });
     assert.equal(withNoRepo.repo, null);
-    assert.equal(withNoRepo.explicit, false);
     assert.equal(withNoRepo.path, join(workdir, ".papercuts.jsonl"));
 
     const result = Journal.open({ startDirectory: workdir, exists: () => false }).add({

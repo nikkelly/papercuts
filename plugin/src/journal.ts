@@ -149,7 +149,6 @@ export interface Preview {
 export class Journal {
   readonly path: string;
   readonly repo: string | null;
-  readonly explicit: boolean;
   private readonly cwd: string;
   private readonly exists: (path: string) => boolean;
   private readonly now: Clock;
@@ -157,14 +156,12 @@ export class Journal {
   private constructor(
     path: string,
     repo: string | null,
-    explicit: boolean,
     cwd: string,
     exists: (path: string) => boolean,
     now: Clock,
   ) {
     this.path = path;
     this.repo = repo;
-    this.explicit = explicit;
     this.cwd = cwd;
     this.exists = exists;
     this.now = now;
@@ -172,12 +169,12 @@ export class Journal {
 
   /** Discover and open the journal for the given starting directory. */
   static open(options: OpenOptions): Journal {
-    const { path, repo, explicit } = discoverLogPath(
+    const { path, repo } = discoverLogPath(
       options.startDirectory,
       options.env ?? process.env,
       options.exists ?? existsSync,
     );
-    return new Journal(path, repo, explicit, resolve(options.startDirectory), options.exists ?? existsSync, options.now ?? (() => new Date()));
+    return new Journal(path, repo, resolve(options.startDirectory), options.exists ?? existsSync, options.now ?? (() => new Date()));
   }
 
   add(input: AddInput): {
@@ -591,18 +588,18 @@ function discoverLogPath(
   startDirectory: string,
   env: NodeJS.ProcessEnv,
   exists: (path: string) => boolean,
-): { path: string; repo: string | null; explicit: boolean } {
+): { path: string; repo: string | null } {
   const explicit = env.PAPERCUTS_FILE;
   if (explicit && explicit.trim() !== "") {
-    return { path: resolve(explicit), repo: findRepositoryRoot(startDirectory, exists), explicit: true };
+    return { path: resolve(explicit), repo: findRepositoryRoot(startDirectory, exists) };
   }
   const repo = findRepositoryRoot(startDirectory, exists);
   if (repo) {
-    return { path: join(repo, ".papercuts.jsonl"), repo, explicit: false };
+    return { path: join(repo, ".papercuts.jsonl"), repo };
   }
   // Papercuts are repository-specific friction; without a repository the
   // journal stays anchored to the working directory instead of a global log.
-  return { path: join(resolve(startDirectory), ".papercuts.jsonl"), repo: null, explicit: false };
+  return { path: join(resolve(startDirectory), ".papercuts.jsonl"), repo: null };
 }
 
 function findRepositoryRoot(

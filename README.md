@@ -122,7 +122,7 @@ add its path under `"skills": {"paths": [...]}`.
 ### The `papercuts` command
 
 The CLI at `plugin/bin/papercuts.mjs` is zero-dependency and works on any machine with
-Node 23+; it is the Codex-side surface and the terminal surface for opencode. Install it
+Node 22+; it is the Codex-side surface and the terminal surface for opencode. Install it
 once on your PATH (from a clone of this repo):
 
 ```bash
@@ -132,8 +132,9 @@ npm run install:cli
 This creates `~/.local/bin/papercuts` as a symlink to the repo copy (so `git pull` keeps
 the command fresh — no reinstall needed). Idempotent: re-run any time. It refuses to
 clobber a non-papercuts file at the target; point it elsewhere with `PAPERCUTS_BIN_DIR`.
-`npm run install:codex` runs the same step for you. `npm link` / `npm install -g .` /
-`npx papercuts` also work, via the `bin` entry in package.json.
+`npm run install:codex` runs the same step for you. `npm link` / `npm install -g .`
+also work from a clone, via the `bin` entry in package.json. The package is not
+published to npm, so `npx papercuts` is not available.
 
 ### TUI sidebar widget
 
@@ -185,7 +186,7 @@ repository, and `papercuts status` reports it.
 
 Codex reads `AGENTS.md` natively; combined with the bundled skills it will file papercuts
 as it works. Entries carry agent attribution (`--agent codex`) so you can tell which host
-filed what. Requires Node 23+ on PATH for type-stripped execution of the CLI.
+filed what. Requires Node 22+ on PATH for type-stripped execution of the CLI.
 
 ### Public / shared repos (Git marketplace)
 
