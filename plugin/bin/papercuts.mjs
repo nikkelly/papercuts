@@ -3,12 +3,15 @@ import { errorEnvelope, exitCodeFor, ok } from "../src/envelope.ts";
 import {
   Journal,
   PapercutsError,
+  SEVERITIES,
+  STATUSES,
 } from "../src/journal.ts";
 
 function usage() {
+  const severityOptions = SEVERITIES.map((entry) => entry.value).join("|");
   console.error(`Usage:
-  papercuts add <text> [--tag TAG] [--severity minor|major|blocker] [--cmd CMD] [--exit N] [--agent NAME]
-  papercuts list [--status open|resolved|all] [--tag TAG] [--severity SEVERITY] [--limit N] [--agent NAME]
+  papercuts add <text> [--tag TAG] [--severity ${severityOptions}] [--cmd CMD] [--exit N] [--agent NAME]
+  papercuts list [--status ${STATUSES.join("|")}] [--tag TAG] [--severity SEVERITY] [--limit N] [--agent NAME]
   papercuts resolve <id-prefix> [--note NOTE] [--agent NAME]
   papercuts remove <id-prefix> [--agent NAME]
   papercuts mute [--agent NAME]
@@ -57,22 +60,13 @@ function parseFlags(args, allowed) {
   return { flags, positionals };
 }
 
-const SEVERITIES = new Set(["minor", "major", "blocker"]);
-
-function severity(value) {
-  if (!SEVERITIES.has(value)) {
-    throw new PapercutsError(
-      "invalid_argument",
-      `invalid severity '${value}': use minor, major, or blocker`,
-    );
-  }
-  return value;
-}
-
-function integer(value, label) {
+// Argv values are strings; convert them to numbers here so the journal's
+// argument contracts (integer, positive) receive real numbers. The contract
+// itself — which values are valid — is enforced by the journal.
+function number(value, label) {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed)) {
-    throw new PapercutsError("invalid_argument", `--${label} must be an integer, got '${value}'`);
+  if (Number.isNaN(parsed)) {
+    throw new PapercutsError("invalid_argument", `--${label} must be a number, got '${value}'`);
   }
   return parsed;
 }
@@ -96,22 +90,19 @@ function main(argv = process.argv.slice(2)) {
       return journal.add({
         text: positionals.join(" "),
         tag: flags.tag,
-        severity: flags.severity === undefined ? undefined : severity(flags.severity),
+        severity: flags.severity,
         cmd: flags.cmd,
-        exitCode: flags.exit === undefined ? undefined : integer(flags.exit, "exit"),
+        exitCode: flags.exit === undefined ? undefined : number(flags.exit, "exit"),
         agent: flags.agent,
       });
     }
     case "list": {
       const { flags } = parseFlags(rest, ["status", "tag", "severity", "limit", "agent"]);
-      if (flags.status !== undefined && !["open", "resolved", "all"].includes(flags.status)) {
-        throw new PapercutsError("invalid_argument", `invalid status '${flags.status}'`);
-      }
       return journal.list({
         status: flags.status,
         tag: flags.tag,
-        severity: flags.severity === undefined ? undefined : severity(flags.severity),
-        limit: flags.limit === undefined ? undefined : Math.max(1, integer(flags.limit, "limit")),
+        severity: flags.severity,
+        limit: flags.limit === undefined ? undefined : number(flags.limit, "limit"),
         agent: flags.agent,
       });
     }

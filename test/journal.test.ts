@@ -585,3 +585,70 @@ function writeRaw(directory: string, content: string) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(logPath(directory), content, "utf8");
 }
+
+test("add rejects a severity outside the vocabulary instead of writing a cut the fold would drop", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const input = { text: "friction", severity: "huge" } as unknown as Parameters<
+      Journal["add"]
+    >[0];
+    assert.throws(
+      () => open(directory).add(input),
+      /invalid severity 'huge': use minor, major, or blocker/,
+    );
+    assert.equal(existsSync(logPath(directory)), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("add rejects a fractional exitCode", () => {
+  const directory = createTemporaryRepository();
+  try {
+    assert.throws(
+      () => open(directory).add({ text: "friction", exitCode: 2.5 }),
+      /exitCode must be an integer/,
+    );
+    assert.equal(existsSync(logPath(directory)), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("list rejects a status outside the vocabulary instead of returning an empty result", () => {
+  const directory = createTemporaryRepository();
+  try {
+    open(directory).add({ text: "friction" });
+    const input = { status: "bogus" } as unknown as Parameters<Journal["list"]>[0];
+    assert.throws(
+      () => open(directory).list(input),
+      /invalid status 'bogus': use open, resolved, or all/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("list rejects a fractional limit instead of silently flooring it", () => {
+  const directory = createTemporaryRepository();
+  try {
+    assert.throws(
+      () => open(directory).list({ limit: 2.5 }),
+      /limit must be an integer/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("list clamps a below-one integer limit to one", () => {
+  const directory = createTemporaryRepository();
+  try {
+    open(directory).add({ text: "first" });
+    open(directory, new Date("2026-08-01T12:00:01.000Z")).add({ text: "second" });
+    const listed = open(directory).list({ limit: 0 });
+    assert.equal(listed.items.length, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

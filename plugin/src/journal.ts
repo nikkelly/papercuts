@@ -9,13 +9,43 @@ import { dirname, join, resolve } from "node:path";
 
 export const AGENT = "opencode";
 
-export type Severity = "minor" | "major" | "blocker";
+/**
+ * The Papercut vocabulary, owned here: the severity values, their sort order,
+ * their human-readable hints, and the list statuses. Everything else — tool
+ * enum schemas, CLI usage and error text, the fold's tolerant reading —
+ * derives from these constants, so a vocabulary change lands in one place.
+ */
+export const SEVERITIES = [
+  { value: "minor", hint: "annoyances", default: true },
+  { value: "major", hint: "time sinks", default: false },
+  { value: "blocker", hint: "hard walls", default: false },
+] as const;
 
-const SEVERITY_RANK: Record<Severity, number> = {
-  minor: 0,
-  major: 1,
-  blocker: 2,
-};
+export type Severity = (typeof SEVERITIES)[number]["value"];
+
+const severityValues: string[] = SEVERITIES.map((entry) => entry.value);
+
+const SEVERITY_RANK: Record<Severity, number> = Object.fromEntries(
+  SEVERITIES.map((entry, index) => [entry.value, index]),
+) as Record<Severity, number>;
+
+function orList(values: readonly string[]): string {
+  return values
+    .map((value, index) => (index === values.length - 1 ? `or ${value}` : value))
+    .join(", ");
+}
+
+export const STATUSES = ["open", "resolved", "all"] as const;
+
+export type ListStatus = (typeof STATUSES)[number];
+
+const SEVERITY_LIST = orList(severityValues);
+const STATUS_LIST = orList(STATUSES);
+
+/** "minor (default) for annoyances, major for time sinks, blocker for hard walls" */
+export const severityDescription = SEVERITIES.map(
+  (entry) => `${entry.value}${entry.default ? " (default)" : ""} for ${entry.hint}`,
+).join(", ");
 
 export interface Evidence {
   cmd?: string;
@@ -93,7 +123,7 @@ export interface AddInput {
 
 export interface ListInput {
   agent?: string;
-  status?: "open" | "resolved" | "all";
+  status?: ListStatus;
   tag?: string;
   severity?: Severity;
   limit?: number;
@@ -195,6 +225,22 @@ export class Journal {
         "papercut text exceeds the maximum of 10000 bytes",
       );
     }
+    // Strict about invalid calls, tolerant about data: garbage arguments are
+    // rejected here, at the seam, before they can be written — a cut written
+    // with a severity the fold would later drop as malformed would vanish
+    // silently on every read.
+    if (input.severity !== undefined && !severityValues.includes(input.severity)) {
+      throw new PapercutsError(
+        "invalid_argument",
+        `invalid severity '${input.severity}': use ${SEVERITY_LIST}`,
+      );
+    }
+    if (input.exitCode !== undefined && !Number.isInteger(input.exitCode)) {
+      throw new PapercutsError(
+        "invalid_argument",
+        `exitCode must be an integer, got ${input.exitCode}`,
+      );
+    }
     const severity = input.severity ?? "minor";
     const tags = input.tag ? [input.tag] : [];
     const ts = nowIso(this.now());
@@ -252,6 +298,24 @@ export class Journal {
     warnings: string[];
     file: string;
   } {
+    if (input.status !== undefined && !STATUSES.includes(input.status)) {
+      throw new PapercutsError(
+        "invalid_argument",
+        `invalid status '${input.status}': use ${STATUS_LIST}`,
+      );
+    }
+    if (input.severity !== undefined && !severityValues.includes(input.severity)) {
+      throw new PapercutsError(
+        "invalid_argument",
+        `invalid severity '${input.severity}': use ${SEVERITY_LIST}`,
+      );
+    }
+    if (input.limit !== undefined && !Number.isInteger(input.limit)) {
+      throw new PapercutsError(
+        "invalid_argument",
+        `limit must be an integer, got ${input.limit}`,
+      );
+    }
     const status = input.status ?? "open";
     const limit = Math.max(1, input.limit ?? 20);
     const bytes = readLogBytes(this.path);
@@ -552,7 +616,8 @@ function parseCut(record: Record<string, unknown>): CutRecord | null {
     typeof record.id !== "string" ||
     typeof record.ts !== "string" ||
     typeof record.text !== "string" ||
-    (severity !== "minor" && severity !== "major" && severity !== "blocker") ||
+    typeof severity !== "string" ||
+    !severityValues.includes(severity) ||
     !Array.isArray(record.tags)
   ) {
     return null;
@@ -565,7 +630,7 @@ function parseCut(record: Record<string, unknown>): CutRecord | null {
     agent: typeof record.agent === "string" ? record.agent : AGENT,
     text: record.text,
     tags: record.tags.filter((tag): tag is string => typeof tag === "string"),
-    severity,
+    severity: severity as Severity,
     cwd: typeof record.cwd === "string" ? record.cwd : "",
     repo: typeof record.repo === "string" ? record.repo : null,
     evidence:

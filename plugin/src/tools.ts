@@ -1,5 +1,5 @@
-import type { Severity } from "./journal.ts";
-import type { Journal } from "./journal.ts";
+import type { Journal, Severity } from "./journal.ts";
+import { SEVERITIES, STATUSES, severityDescription } from "./journal.ts";
 import { num, str, type Fields } from "./schema.ts";
 
 export interface ToolContext {
@@ -22,7 +22,7 @@ export function defineTool<TName extends string>(
   return { name, description, args, run };
 }
 
-export const severities = ["minor", "major", "blocker"] as const;
+const severityValues = SEVERITIES.map((entry) => entry.value);
 
 export const tools = [
   defineTool(
@@ -31,9 +31,9 @@ export const tools = [
     {
       text: str("What you hit and what would have prevented it, one sentence"),
       tag: str("Area label, e.g. tooling, docs", { optional: true }),
-      severity: str("minor (default) for annoyances, major for time sinks, blocker for hard walls", {
+      severity: str(severityDescription, {
         optional: true,
-        enum: [...severities],
+        enum: [...severityValues],
       }),
       cmd: str("The failed command, when filing a tool failure", { optional: true }),
       exitCode: num("Exit code of the failed command", { optional: true }),
@@ -52,9 +52,9 @@ export const tools = [
     "papercuts_list",
     "List logged papercuts for this repository, severity-first then newest. Use to review recurring friction before fixing root causes.",
     {
-      status: str("Filter by status (default: open)", { optional: true, enum: ["open", "resolved", "all"] }),
+      status: str("Filter by status (default: open)", { optional: true, enum: [...STATUSES] }),
       tag: str("Only entries with this tag", { optional: true }),
-      severity: str("Only entries with this severity", { optional: true, enum: [...severities] }),
+      severity: str("Only entries with this severity", { optional: true, enum: [...severityValues] }),
       limit: num("Maximum entries returned (default 20)", { optional: true }),
     },
     (journal, args, context) =>
