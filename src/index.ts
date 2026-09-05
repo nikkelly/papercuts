@@ -1,6 +1,5 @@
 import type { Plugin, ToolDefinition } from "@opencode-ai/plugin";
 import { tool } from "@opencode-ai/plugin";
-import { resolve } from "node:path";
 import { z } from "zod";
 import { ok } from "../plugin/src/envelope.ts";
 import {
@@ -9,16 +8,7 @@ import {
 } from "../plugin/src/journal.ts";
 import type { Fields } from "../plugin/src/schema.ts";
 import { tools } from "../plugin/src/tools.ts";
-
-function startDirectory(context: { worktree?: string; directory?: string }): string {
-  const candidates = [context.directory, context.worktree];
-  for (const candidate of candidates) {
-    if (candidate && candidate.trim() !== "" && resolve(candidate) !== "/") {
-      return candidate;
-    }
-  }
-  return process.cwd();
-}
+import { startDirectory } from "./host-context.ts";
 
 function fail(error: unknown): never {
   if (error instanceof PapercutsError) {

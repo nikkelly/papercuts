@@ -16,6 +16,10 @@ _Avoid_: Store, log file, database
 The pure projection that reduces the journal's append-only events into the current snapshot: which papercuts are open, their severities, the resolved set, and the current mute state. The folder is the only part that reads meaning out of raw events.
 _Avoid_: Aggregate, summarize
 
+**Start directory**:
+The directory from which Journal discovery begins, resolved by each host from its session context (opencode: session directory, then worktree, rejecting empty strings and the `/` root sentinel, falling back to the process working directory). Discovery itself then anchors at the git repository root.
+_Avoid_: Root, cwd, base path
+
 **Severity**:
 The triage weight of a papercut: `minor`, `major`, or `blocker`. Drives what the TUI surfaces and the aggregate "level" reported.
 _Avoid_: Priority, impact level

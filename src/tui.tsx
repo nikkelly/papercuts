@@ -4,6 +4,7 @@ import { basename, dirname } from "node:path";
 import type { TuiPluginApi, TuiPluginModule, TuiTheme } from "@opencode-ai/plugin/tui";
 import { createSignal, For, Show } from "solid-js";
 import { Journal } from "../plugin/src/journal.ts";
+import { startDirectory } from "./host-context.ts";
 import {
   collapsible,
   computeStats,
@@ -37,7 +38,7 @@ function themeColor(ctx: SlotContext, value: StatsLevel) {
 }
 
 export const tui = async (api: TuiPluginApi) => {
-  const root = api.state.path.worktree || api.state.path.directory;
+  const root = startDirectory(api.state.path);
   const journal = Journal.open({ startDirectory: root });
   const journalPath = journal.path;
 
@@ -65,7 +66,10 @@ export const tui = async (api: TuiPluginApi) => {
 
   const toggle = () => {
     try {
-      const muted = !(view()?.muted ?? false);
+      // Re-fold fresh: the journal's contract is that every operation reads
+      // current state rather than trusting cached state (other hosts may have
+      // muted or unmuted since the last refresh).
+      const muted = !journal.status().muted;
       journal.setMuted(muted, { agent: "tui" });
       refresh();
       api.ui.toast({
