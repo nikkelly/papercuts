@@ -189,6 +189,11 @@ What the plugin bundles:
 Codex reads `AGENTS.md` natively; combined with the bundled skills it will file papercuts
 as it works. Entries carry agent attribution so you can tell which host filed what.
 
+> **Headless note:** interactive Codex sessions get the MCP tools automatically, but
+> `codex exec` does not inject plugin MCP tools into the model's tool schema (an upstream
+> Codex limitation). For headless and CI runs, use the bundled CLI — the shared
+> `AGENTS.md` pen lines already stay CLI-based for exactly this reason.
+
 ### Public / shared repos (Git marketplace)
 
 If the repo is public (or you're sharing with a team), register it as a marketplace and
