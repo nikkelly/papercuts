@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- The journal owns the Papercut vocabulary: `SEVERITIES` (values, hints, sort order) and
+  `STATUSES` are exported from `plugin/src/journal.ts`, and the `Severity` type, the
+  fold's severity rank, `parseCut`'s tolerant reading, the tool enum schemas, the
+  severity description prose, and the CLI usage line all derive from them — one
+  spelling for values, order, and prose.
+- Strict about invalid calls, tolerant about data: `add` now rejects a severity
+  outside the vocabulary or a fractional `exitCode` at write time (a cut written with
+  a severity the fold would drop as malformed used to vanish silently on every read),
+  and `list` rejects an invalid `status` or fractional `limit` with a clear error
+  instead of returning an empty result or silently flooring. The fold stays tolerant
+  of corrupt disk bytes; envelopes and exit codes are unchanged.
+- One start-directory policy for the opencode adapters (`src/host-context.ts`): the
+  tool surface and the TUI widget resolve the Journal's start directory through the
+  same guarded rule (directory → worktree, rejecting empty strings and the `/` root
+  sentinel), so a `worktree: "/"` session no longer sends the sidebar to
+  `/.papercuts.jsonl`; the TUI toggle also re-reads fresh mute state.
+- The repo's own AGENTS.md pen demonstrates the placeholder-free short command.
+
 ## 0.2.0 (2026-09-04)
 
 - Renamed to `papercuts`: the project serves both opencode and Codex, so the

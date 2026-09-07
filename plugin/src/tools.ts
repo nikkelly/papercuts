@@ -1,4 +1,4 @@
-import type { Journal, Severity } from "./journal.ts";
+import type { Journal, ListStatus, Severity } from "./journal.ts";
 import { SEVERITIES, STATUSES, severityDescription } from "./journal.ts";
 import { num, str, type Fields } from "./schema.ts";
 
@@ -59,7 +59,7 @@ export const tools = [
     },
     (journal, args, context) =>
       journal.list({
-        status: args.status as "open" | "resolved" | "all" | undefined,
+        status: args.status as ListStatus | undefined,
         tag: args.tag as string | undefined,
         severity: args.severity as Severity | undefined,
         limit: args.limit as number | undefined,

@@ -7,13 +7,14 @@ Guidance for agents working in this repository.
 MANDATORY: whenever a command you ran fails unexpectedly — a nonzero exit you could not
 have predicted from the task — file it before moving on:
 
-- In opencode, use the native tool:
+- If the `papercuts` command is on PATH, use it (works in either host):
+      papercuts add "what you hit and what would have prevented it" --tag <area> --agent codex
+- In opencode, the native tool also works:
       papercuts_add(text="what you hit and what would have prevented it", tag="<area>")
-- In Codex, use the bundled plugin CLI:
-      node <plugin-root>/bin/papercuts.mjs add "..." --tag <area> --agent codex
 
 Do not file failures that ARE the assigned task itself (e.g. a test you were told to fix).
 Severity: minor (default) for annoyances, major for time sinks, blocker for hard walls.
+Never include secrets.
 
 This repo dogfoods its own plugin: the journal lives at `.papercuts.jsonl` here. When
 asked to review papercuts, follow `skills/review-papercuts/SKILL.md`.
