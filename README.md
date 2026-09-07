@@ -146,6 +146,26 @@ auto-discovered — subdirectories are not. For nested layouts (e.g.
 
 Restart opencode after changing plugins — config is loaded once at startup.
 
+### The `papercuts` command
+
+The CLI at `plugin/bin/papercuts.mjs` is zero-dependency and works on any machine with
+Node 22+; it is the Codex-side surface and the terminal surface for opencode. Install it
+once on your PATH (from a clone of this repo):
+
+```bash
+npm run install:cli
+```
+
+This creates `~/.local/bin/papercuts` as a symlink to the repo copy (so `git pull` keeps
+the command fresh — no reinstall needed). Idempotent: re-run any time. It refuses to
+clobber a non-papercuts file at the target; point it elsewhere with `PAPERCUTS_BIN_DIR`.
+`npm run install:codex` runs the same step for you. `npm link` / `npm install -g .`
+also work from a clone, via the `bin` entry in package.json. The package is not
+published to npm, and npm-style installs straight from GitHub (`npx github:…`,
+`npm install github:…`) do not work either: the CLI ships as plain TypeScript and Node
+refuses to type-strip files inside `node_modules`. The git-clone + installer path
+(Quickstart above) is the supported install.
+
 ### TUI sidebar widget
 
 The repo also ships a TUI plugin that makes friction visible at a glance: a PAPERCUTS
