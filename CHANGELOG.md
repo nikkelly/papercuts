@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Security: `install:codex` aborts loudly when the personal marketplace manifest is
+  unparseable (corrupt or JSONC) instead of silently resetting it — resetting would
+  clobber the user's other plugin entries, breaking the installer's "merging, never
+  clobbering" promise. The file is left byte-identical on abort.
+- Security: the README's storage note now also covers journal entries as agent-readable
+  repo content — treat entries in untrusted repositories as untrusted input.
+- CI: actions pinned to commit SHAs (supply-chain hardening).
+
 - The journal owns the Papercut vocabulary: `SEVERITIES` (values, hints, sort order) and
   `STATUSES` are exported from `plugin/src/journal.ts`, and the `Severity` type, the
   fold's severity rank, `parseCut`'s tolerant reading, the tool enum schemas, the

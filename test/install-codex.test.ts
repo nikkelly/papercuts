@@ -222,6 +222,41 @@ test("installCodex reports success through injected seams on a healthy fake code
   }
 });
 
+test("installCodex aborts on an unparseable marketplace manifest instead of resetting it", () => {
+  const directory = mkdtempSync(join(tmpdir(), "papercuts-codex-corrupt-"));
+  try {
+    const repo = fixturePluginTree(directory);
+    const shimDir = writeFakeCodex(
+      directory,
+      [
+        "#!/bin/sh",
+        'if [ "$1" = "--version" ]; then echo "codex-fake 1.0"; exit 0; fi',
+        'echo "unexpected codex call: $*" >&2; exit 1',
+        "",
+      ].join("\n"),
+    );
+    mkdirSync(join(directory, "manifest"), { recursive: true });
+    const manifest = join(directory, "manifest", "marketplace.json");
+    writeFileSync(manifest, '{ "plugins": [ // jsonc comment\n ] }', "utf8");
+    const before = readFileSync(manifest, "utf8");
+
+    const result = installCodex({
+      repoRoot: repo,
+      installTarget: join(directory, "target"),
+      marketplaceFile: manifest,
+      binDir: join(directory, "bin"),
+      env: fakeCodexEnv(shimDir),
+    });
+
+    assert.equal(result.status, 1, result.lines.join("\n"));
+    assert.match(result.errors.join("\n"), /not valid JSON/);
+    // The user's manifest must be byte-identical — no silent reset-and-clobber.
+    assert.equal(readFileSync(manifest, "utf8"), before);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("installCodex surfaces a failed codex command instead of reporting success", () => {
   const directory = mkdtempSync(join(tmpdir(), "papercuts-codex-flow-"));
   try {

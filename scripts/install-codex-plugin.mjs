@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { copyTree, readJsonOrDefault, runCommand, writeJson } from "../shared/install.mjs";
+import { copyTree, readJsonOrThrow, runCommand, writeJson } from "../shared/install.mjs";
 import { mergeMarketplace, PAPERCUTS_ENTRY } from "./codex-marketplace.mjs";
 import { installCli } from "./install-cli.mjs";
 
@@ -17,7 +17,10 @@ const MARKETPLACE_DIR = join(homedir(), ".agents", "plugins");
 const MARKETPLACE_FILE = join(MARKETPLACE_DIR, "marketplace.json");
 
 function ensureMarketplaceFile(marketplaceFile) {
-  const existing = readJsonOrDefault(marketplaceFile, {});
+  // Fail loudly on an unparseable manifest: silently resetting it here would
+  // clobber the user's other plugin entries (the README promises "merging,
+  // never clobbering"). Same contract as the opencode installer's config.
+  const existing = readJsonOrThrow(marketplaceFile);
   const merged = mergeMarketplace(existing);
   // The installer owns this home-dir manifest for this marketplace, so always force the
   // name: registration and `papercuts@${MARKETPLACE_NAME}` reinstall below depend on it,

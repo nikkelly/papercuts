@@ -110,7 +110,10 @@ complaints show up in `git diff` and travel with the repo. No server, no telemet
 
 > **Security note:** `cmd`/`exitCode` evidence is stored verbatim — there is no secret
 > redaction. Do not file papercuts with commands containing tokens or credentials, and
-> review `.papercuts.jsonl` before committing it to a shared repository.
+> review `.papercuts.jsonl` before committing it to a shared repository. Filed text is
+> also plain repo content that agents read and act on: in repositories you don't trust,
+> treat journal entries like any other untrusted input, and never file instructions you
+> wouldn't want followed.
 
 ## Install for opencode
 
