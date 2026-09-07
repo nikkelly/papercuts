@@ -8,7 +8,10 @@
   clobbering" promise. The file is left byte-identical on abort.
 - Security: the README's storage note now also covers journal entries as agent-readable
   repo content — treat entries in untrusted repositories as untrusted input.
-- CI: actions pinned to commit SHAs (supply-chain hardening).
+- CI: actions pinned to commit SHAs (supply-chain hardening); workflow granted only
+  `contents: read`; Dependabot now tracks npm and GitHub-Actions updates weekly.
+- Added SECURITY.md: private vulnerability reporting, scope statement, supported
+  versions.
 
 - The journal owns the Papercut vocabulary: `SEVERITIES` (values, hints, sort order) and
   `STATUSES` are exported from `plugin/src/journal.ts`, and the `Severity` type, the
