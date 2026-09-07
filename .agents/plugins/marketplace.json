@@ -1,0 +1,21 @@
+{
+  "name": "papercuts",
+  "interface": {
+    "displayName": "Papercuts"
+  },
+  "plugins": [
+    {
+      "name": "papercuts",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/nikkelly/papercuts.git",
+        "path": "./plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer tools"
+    }
+  ]
+}

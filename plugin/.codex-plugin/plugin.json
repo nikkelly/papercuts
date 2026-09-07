@@ -1,0 +1,28 @@
+{
+  "name": "papercuts",
+  "version": "0.2.0",
+  "description": "Give your agent a complaint box: file, list, resolve, and remove papercuts in an append-only journal at the repository root",
+  "author": {
+    "name": "Nik Kelly",
+    "url": "https://github.com/nikkelly"
+  },
+  "homepage": "https://github.com/nikkelly/papercuts",
+  "repository": "https://github.com/nikkelly/papercuts",
+  "license": "MIT",
+  "keywords": ["papercuts", "friction-log", "developer-experience", "agents"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Papercuts",
+    "shortDescription": "A complaint box for agents: log friction, review it, fix root causes",
+    "longDescription": "Papercuts gives coding agents a one-command way to log workflow friction — dead-end tool calls, broken links, misleading docs, footgun configs — into an append-only .papercuts.jsonl journal at the repository root. A companion review skill turns validated complaints into durable fixes. The journal is repo-scoped and shared across agents.",
+    "developerName": "Nik Kelly",
+    "category": "Developer tools",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/nikkelly/papercuts",
+    "defaultPrompt": [
+      "File a papercut about the last thing that slowed you down, then keep working",
+      "Review the open papercuts and turn them into durable fixes"
+    ]
+  }
+}
