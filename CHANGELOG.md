@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Location-independent installs. The CLI installs as a self-contained bundle in
+  `~/.local/share/papercuts/` — it keeps working even if the clone is moved, renamed,
+  or deleted. The opencode plugin copies live at `~/.local/share/papercuts/opencode/`
+  with configs written once at stable paths, and stale papercuts config entries and
+  CLI links are replaced on re-run via an install manifest instead of accumulating.
+  One refresh story for both hosts: `git pull && npm run install:all`.
+
 ## 0.2.0 (2026-09-04) — initial public release
 
 - Security: `install:codex` aborts loudly when the personal marketplace manifest is
