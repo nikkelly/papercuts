@@ -118,10 +118,13 @@ complaints show up in `git diff` and travel with the repo. No server, no telemet
 ## Install for opencode
 
 `npm run install:opencode` wires everything for opencode (run from the clone; add
-`--global` to target `~/.config/opencode` instead of the current project). It merges
-`src/index.ts` and `skills/` into your `opencode.json`, and `src/tui.tsx` into
-`.opencode/tui.json` — preserving existing config keys and plugin entries. JSONC
-configs are left alone with an error message.
+`--global` to target `~/.config/opencode` instead of the current project). It copies
+the plugin into `~/.local/share/papercuts/opencode/` — a stable location, independent
+of your clone — and points your `opencode.json` (tools + skills) and
+`.opencode/tui.json` (widget) there, preserving existing config keys and entries.
+JSONC configs are left alone with an error message. Re-runs refresh the copies; the
+config entries are written once, and if your clone moves or disappears they are healed
+by re-running the installer.
 
 Doing it by hand (if you cloned somewhere other than `~/code/papercuts`, substitute
 your path — or prefer the installer, which resolves it for you):
@@ -156,15 +159,15 @@ once on your PATH (from a clone of this repo):
 npm run install:cli
 ```
 
-This creates `~/.local/bin/papercuts` as a symlink to the repo copy (so `git pull` keeps
-the command fresh — no reinstall needed). Idempotent: re-run any time. It refuses to
-clobber a non-papercuts file at the target; point it elsewhere with `PAPERCUTS_BIN_DIR`.
-`npm run install:codex` runs the same step for you. `npm link` / `npm install -g .`
-also work from a clone, via the `bin` entry in package.json. The package is not
-published to npm, and npm-style installs straight from GitHub (`npx github:…`,
-`npm install github:…`) do not work either: the CLI ships as plain TypeScript and Node
-refuses to type-strip files inside `node_modules`. The git-clone + installer path
-(Quickstart above) is the supported install.
+This installs a self-contained copy of the CLI to `~/.local/share/papercuts/` and links
+`~/.local/bin/papercuts` to it — your clone's name and location are irrelevant, and the
+command keeps working even if you delete the clone. Idempotent: re-run any time (that
+is also how the command gets updated after a `git pull`). It refuses to clobber a
+foreign file at the target; point it elsewhere with `PAPERCUTS_BIN_DIR`. The package is
+not published to npm, and npm-style installs straight from GitHub (`npx github:…`) do
+not work either: the CLI ships as plain TypeScript and Node refuses to type-strip
+files inside `node_modules`. The git-clone + installer path (Quickstart above) is the
+supported install.
 
 ### TUI sidebar widget
 
@@ -229,12 +232,10 @@ codex plugin marketplace add nikkelly/papercuts
 
 ### Updating the plugin
 
-The two hosts update differently, because opencode loads live while Codex copies:
-
-- **opencode**: `git pull`, then restart opencode. Config points straight at
-  `src/index.ts`, so `git pull` + restart is all it takes — no reinstall step.
-- **Codex**: `git pull`, then re-run `npm run install:codex` (it reinstalls,
-  refreshing the installed copy), then start a new session.
+One flow for both hosts: `git pull && npm run install:all`, then restart opencode and
+start a new Codex session. The installer refreshes every installed copy (the CLI
+bundle, the opencode plugin, the Codex plugin) — your configs point at stable
+locations and never need editing again, wherever the clone lives.
 
 ## Close the loop: review papercuts
 
@@ -315,6 +316,10 @@ A fix to the store lands in all hosts with one commit.
   after any config change.
 - **`papercuts: command not found`** — re-run `npm run install:cli` and make sure
   `~/.local/bin` is on PATH (override the target with `PAPERCUTS_BIN_DIR`).
+- **Moved, renamed, or deleted your clone?** Nothing breaks — the install lives in
+  `~/.local/share/papercuts/` and `~/.codex/plugins/papercuts`, independent of the
+  clone. To update it, run `git pull && npm run install:all` from wherever the clone
+  now lives.
 - **Journal landed in an unexpected place** — it anchors at the git repository root;
   set `PAPERCUTS_FILE` to pin a different path.
 - **TUI section missing** — add `src/tui.tsx` to `.opencode/tui.json` (or run
