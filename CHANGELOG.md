@@ -4,6 +4,20 @@
 
 - Robust to the shell's `node` version: installers skip cleanly with a clear message on Node < 22, and the Codex MCP config pins the installer's node binary (fixes initialize-handshake failures when the PATH `node` is older than 22).
 - Location-independent installs: self-contained CLI bundle in `~/.local/share/papercuts/`, opencode plugin copies with write-once configs, manifest-tracked config repair. One refresh story for both hosts: `git pull && npm run install:all`.
+- Robust to the shell's `node` version. The installers refuse to install on
+  Node < 22 with a clear `SKIPPED: papercuts requires Node 22+…` note instead
+  of crashing with `ERR_INVALID_ARG_TYPE` (`import.meta.dirname` is not
+  available before Node 21; the installers now use the universally supported
+  `import.meta.url` idiom). The Codex MCP server's copied `.mcp.json` pins the
+  node binary that ran the installer, so the server no longer dies at the
+  initialize handshake when codex launches it with an older `node` first on
+  PATH.
+- Location-independent installs. The CLI installs as a self-contained bundle in
+  `~/.local/share/papercuts/` — it keeps working even if the clone is moved, renamed,
+  or deleted. The opencode plugin copies live at `~/.local/share/papercuts/opencode/`
+  with configs written once at stable paths, and stale papercuts config entries and
+  CLI links are replaced on re-run via an install manifest instead of accumulating.
+  One refresh story for both hosts: `git pull && npm run install:all`.
 
 ## 0.2.0 (2026-09-04) — initial public release
 
