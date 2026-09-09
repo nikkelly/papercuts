@@ -2,33 +2,17 @@
 
 ## Reporting a vulnerability
 
-Use GitHub's private vulnerability reporting on this repository
-(**Security → Report a vulnerability**) — please do not open a public issue for
-something you believe is exploitable. Include what you did, what you expected,
-and what happened; a proof of concept helps but is not required.
-
-You can expect an initial response within a few days and honest triage
-thereafter: fixed, mitigated, or explained why it is out of scope.
+Use GitHub's private vulnerability reporting (**Security → Report a vulnerability**) — not a public issue. Include what you did and what happened; a proof of concept helps but isn't required. Expect an initial response within a few days.
 
 ## Scope
 
-Papercuts is a local-first tool: it reads and writes an append-only journal
-(`.papercuts.jsonl`) inside your repositories and runs entirely on your
-machine.
+Papercuts is local-first: an append-only journal (`.papercuts.jsonl`) inside your repositories, no server, no telemetry, no network calls.
 
-- **No network.** Nothing phones home; there is no telemetry and no server.
-- **No privilege escalation.** The installers only write to your own user
-  config paths (`~/.config/opencode`, `~/.codex`, `~/.agents`,
-  `~/.local/bin`) and the current project.
-- **Evidence is stored verbatim.** `cmd`/`exitCode` fields are written as
-  given — there is no secret redaction. Do not file papercuts containing
-  tokens or credentials, and review the journal before committing it to a
-  shared repository. See the security note in the [README](README.md).
-- **Journal entries are agent-readable repo content.** In repositories you
-  don't trust, treat journal entries like any other untrusted input.
+- The installers only write to your own user paths (`~/.config/opencode`, `~/.codex`, `~/.agents`, `~/.local/share/papercuts`, `~/.local/bin`) and the current project.
+- `cmd`/`exitCode` evidence is stored verbatim — no secret redaction. Don't file secrets, and review the journal before committing it to shared repositories.
+- Journal entries are agent-readable repo content; in repositories you don't trust, treat them like any other untrusted input.
 
-Out of scope: vulnerabilities in the hosts papercuts runs inside (opencode,
-Codex, Node.js) — report those upstream.
+Vulnerabilities in the hosts papercuts runs inside (opencode, Codex, Node.js) are out of scope — report those upstream.
 
 ## Supported versions
 
