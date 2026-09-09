@@ -48,6 +48,37 @@ function envelope(result: SpawnSyncReturns<string>) {
   return parsed.data;
 }
 
+const SYSTEM_NODE = "/usr/bin/node";
+
+function systemNodeMajor(): number {
+  try {
+    const out = spawnSync(SYSTEM_NODE, ["--version"], { encoding: "utf8" });
+    if (out.status !== 0) return 0;
+    return Number(out.stdout.trim().replace(/^v/, "").split(".")[0]);
+  } catch {
+    return 0;
+  }
+}
+
+test("install:cli skips cleanly on Node < 22 instead of crashing", { skip: systemNodeMajor() >= 22 || systemNodeMajor() === 0 }, () => {
+  const binDir = temporaryBinDir();
+  const shareDir = temporaryShareDir();
+  const result = spawnSync(SYSTEM_NODE, [INSTALLER], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: { ...process.env, PAPERCUTS_BIN_DIR: binDir, PAPERCUTS_SHARE_DIR: shareDir },
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /SKIPPED: papercuts requires Node 22\+/);
+  assert.match(result.stdout, /found v?18/);
+  // No cryptic crash, no stack trace: a clean, actionable skip.
+  assert.doesNotMatch(result.stderr, /ERR_INVALID_ARG_TYPE/);
+  assert.doesNotMatch(result.stderr, /^ +at /m, result.stderr);
+  // Nothing was installed.
+  assert.equal(existsSync(join(binDir, "papercuts")), false);
+  assert.equal(existsSync(join(shareDir, "plugin", "bin", "papercuts.mjs")), false);
+});
+
 /** A minimal fake clone carrying the three files the CLI bundle needs. */
 function fakeClone() {
   const clone = mkdtempSync(join(tmpdir(), "papercuts-clone-"));

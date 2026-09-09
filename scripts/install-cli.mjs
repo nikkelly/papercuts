@@ -4,10 +4,14 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REPO_ROOT = resolve(import.meta.dirname, "..");
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function defaultShareDir() {
   return process.env.PAPERCUTS_SHARE_DIR ?? join(homedir(), ".local", "share", "papercuts");
+}
+
+function nodeMajor() {
+  return Number(process.versions.node.split(".")[0]);
 }
 
 /** Every papercuts CLI link, past and present, points at a path ending in
@@ -16,14 +20,26 @@ function defaultShareDir() {
 const CLI_LINK_SUFFIX = join("plugin", "bin", "papercuts.mjs");
 
 export function installCli(options = {}) {
+  const lines = [];
+  const errors = [];
+  // The installed command itself needs Node 22+ (type-stripped .ts imports);
+  // installing on an older node would produce a command that cannot run.
+  if (nodeMajor() < 22) {
+    return {
+      status: 0,
+      skip:
+        `papercuts requires Node 22+ to run the papercuts command (found ${process.versions.node}) — ` +
+        "install Node 22+ (e.g. via nvm) and re-run npm run install:cli",
+      lines,
+      errors,
+    };
+  }
   const repoRoot = options.repoRoot ?? REPO_ROOT;
   const shareDir = options.shareDir ?? defaultShareDir();
   const binDir =
     options.binDir ?? process.env.PAPERCUTS_BIN_DIR ?? join(homedir(), ".local", "bin");
   const bundleBin = join(shareDir, "plugin", "bin", "papercuts.mjs");
   const linkPath = join(binDir, "papercuts");
-  const lines = [];
-  const errors = [];
 
   // 1. Refresh the self-contained bundle: the CLI plus its only two local
   // imports, laid out so the bin's relative imports keep resolving (the bin's
@@ -84,9 +100,10 @@ export function installCli(options = {}) {
 }
 
 function main() {
-  const { status, lines, errors } = installCli();
+  const { status, lines, errors, skip } = installCli();
   for (const line of lines) process.stdout.write(line + "\n");
   for (const err of errors) process.stderr.write(err + "\n");
+  if (skip) process.stdout.write(`SKIPPED: ${skip}\n`);
   if (status !== 0) process.exitCode = status;
 }
 
