@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyTree, readJsonOrThrow, readJsonOrDefault, writeJson } from "../shared/install.mjs";
 
-const REPO_ROOT = resolve(import.meta.dirname, "..");
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function defaultShareDir() {
   return process.env.PAPERCUTS_SHARE_DIR ?? join(homedir(), ".local", "share", "papercuts");

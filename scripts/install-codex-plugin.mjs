@@ -8,7 +8,11 @@ import { copyTree, readJsonOrThrow, runCommand, writeJson } from "../shared/inst
 import { mergeMarketplace, PAPERCUTS_ENTRY } from "./codex-marketplace.mjs";
 import { installCli } from "./install-cli.mjs";
 
-const REPO_ROOT = resolve(import.meta.dirname, "..");
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+function nodeMajor() {
+  return Number(process.versions.node.split(".")[0]);
+}
 const PLUGIN_SRC = join(REPO_ROOT, "plugin");
 const MARKETPLACE_NAME = "personal";
 const CODEX_PLUGINS_DIR = join(homedir(), ".codex", "plugins");
@@ -86,6 +90,20 @@ export function installCodex(options = {}) {
   const env = options.env;
   const lines = [];
   const errors = [];
+
+  // The MCP server and the bundled CLI both run papercuts' TypeScript via
+  // Node's type stripping; installing under an older node would produce a
+  // server that dies at the initialize handshake.
+  if (nodeMajor() < 22) {
+    return {
+      status: 0,
+      skip:
+        `papercuts requires Node 22+ to run the Codex MCP server and CLI (found ${process.versions.node}) — ` +
+        "install Node 22+ (e.g. via nvm) and re-run npm run install:codex",
+      lines,
+      errors,
+    };
+  }
 
   if (!existsSync(pluginSrc)) {
     errors.push(`error: no plugin tree at ${pluginSrc}`);
@@ -174,6 +192,12 @@ export function pinMcpServerPath(installTarget) {
   const server = config?.mcpServers?.papercuts;
   if (server && Array.isArray(server.args)) {
     server.args[0] = join(installTarget, "src", "mcp.ts");
+  }
+  // Pin the node binary that ran the installer: the server's .ts imports need
+  // Node 22+, and whichever `node` is first on PATH when codex launches the
+  // server may be older. The installer re-run is the refresh path.
+  if (server && server.command === "node") {
+    server.command = process.execPath;
   }
   writeFileSync(mcpFile, JSON.stringify(config, null, 2) + "\n");
 }

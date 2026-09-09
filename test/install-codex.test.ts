@@ -9,6 +9,8 @@ import test from "node:test";
 import { marketplaceEntry, mergeMarketplace, PAPERCUTS_ENTRY } from "../scripts/codex-marketplace.mjs";
 import { installCodex, pinMcpServerPath, removeStaleNodeModules } from "../scripts/install-codex-plugin.mjs";
 
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
 test("mergeMarketplace seeds a brand-new marketplace file shape", () => {
   const merged = mergeMarketplace(undefined);
   assert.equal(merged.name, undefined);
@@ -94,6 +96,9 @@ test("pinMcpServerPath rewrites the copied .mcp.json args[0] to an absolute path
 
     const config = JSON.parse(readFileSync(join(target, ".mcp.json"), "utf8"));
     assert.equal(config.mcpServers.papercuts.args[0], join(target, "src", "mcp.ts"));
+    // The node binary that ran the installer is pinned, so the server does not
+    // depend on whichever `node` is first on PATH when codex launches it.
+    assert.equal(config.mcpServers.papercuts.command, process.execPath);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -150,6 +155,18 @@ test("install:codex skips cleanly when the codex CLI is absent", () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /SKIPPED/);
   assert.match(result.stdout, /not found on PATH/);
+});
+
+test("install:codex skips cleanly on Node < 22 instead of producing a dead server", { skip: !existsSync("/usr/bin/node") || Number(spawnSync("/usr/bin/node", ["--version"], { encoding: "utf8" }).stdout.trim().replace(/^v/, "").split(".")[0]) >= 22 }, () => {
+  const installer = fileURLToPath(new URL("../scripts/install-codex-plugin.mjs", import.meta.url));
+  const result = spawnSync("/usr/bin/node", [installer], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /SKIPPED: papercuts requires Node 22\+/);
+  assert.doesNotMatch(result.stderr, /ERR_INVALID_ARG_TYPE/);
+  assert.doesNotMatch(result.stderr, /^ +at /m, result.stderr);
 });
 
 function writeFakeCodex(directory: string, script: string) {
@@ -214,9 +231,11 @@ test("installCodex reports success through injected seams on a healthy fake code
     const lines = result.lines.join("\n");
     assert.match(lines, /AGENTS\.md pen: node .*bin\/papercuts\.mjs/);
     assert.ok(existsSync(join(directory, "target", "src", "mcp.ts")));
-    // The copied .mcp.json pins the server to the install target.
+    // The copied .mcp.json pins the server to the install target, and the
+    // node binary to the one that ran the installer.
     const copied = JSON.parse(readFileSync(join(directory, "target", ".mcp.json"), "utf8"));
     assert.equal(copied.mcpServers.papercuts.args[0], join(directory, "target", "src", "mcp.ts"));
+    assert.equal(copied.mcpServers.papercuts.command, process.execPath);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -9,9 +9,10 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseJournal, gradeRun, gradeSuite, type Expectation } from "./grader.ts";
 
-const REPO_ROOT = resolve(import.meta.dirname, "..");
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PLUGIN_ENTRY = join(REPO_ROOT, "src", "index.ts");
 const TIMEOUT_MS = Number(process.env.PAPERCUTS_EVAL_TIMEOUT_MS ?? 300_000);
 const MODEL = process.env.PAPERCUTS_EVAL_MODEL?.trim() || "";
