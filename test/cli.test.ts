@@ -22,6 +22,14 @@ function runCli(directory: string, ...args: string[]) {
   });
 }
 
+function runCliEnv(directory: string, extraEnv: Record<string, string>, ...args: string[]) {
+  return spawnSync(process.execPath, [CLI_PATH, ...args], {
+    cwd: directory,
+    encoding: "utf8",
+    env: { ...process.env, PAPERCUTS_FILE: "", ...extraEnv },
+  });
+}
+
 function envelope(result: SpawnSyncReturns<string>) {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const parsed = JSON.parse(result.stdout);
@@ -313,3 +321,134 @@ function writeRawJournal(directory: string, records: Array<Record<string, unknow
   mkdirSync(directory, { recursive: true });
   writeFileSync(join(directory, ".papercuts.jsonl"), records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 }
+
+test("cli add accepts --key=value flag forms", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const data = envelope(runCli(directory, "add", "equals form", "--tag=build", "--severity=major"));
+    assert.deepEqual(data.record.tags, ["build"]);
+    assert.equal(data.record.severity, "major");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli add treats everything after -- as text", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const data = envelope(runCli(directory, "add", "--", "--not-a-flag", "just text"));
+    assert.equal(data.record.text, "--not-a-flag just text");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli add rejects duplicate flags", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const result = runCli(directory, "add", "text", "--tag", "a", "--tag", "b");
+    assert.equal(result.status, 1);
+    assert.equal(JSON.parse(result.stdout).error.code, "invalid_argument");
+    assert.match(JSON.parse(result.stdout).error.message, /duplicate/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli list filters by tag and severity", () => {
+  const directory = createTemporaryRepository();
+  try {
+    envelope(runCli(directory, "add", "docs gripe", "--tag", "docs"));
+    envelope(runCli(directory, "add", "build gripe", "--tag", "build", "--severity", "major"));
+
+    const docs = envelope(runCli(directory, "list", "--tag", "docs"));
+    assert.equal(docs.count, 1);
+    assert.equal(docs.items[0].cut.text, "docs gripe");
+
+    const majors = envelope(runCli(directory, "list", "--severity", "major"));
+    assert.equal(majors.count, 1);
+    assert.equal(majors.items[0].cut.severity, "major");
+
+    const none = envelope(runCli(directory, "list", "--tag", "nope"));
+    assert.equal(none.count, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli list --limit truncates and reports truncation", () => {
+  const directory = createTemporaryRepository();
+  try {
+    envelope(runCli(directory, "add", "first"));
+    envelope(runCli(directory, "add", "second", "--severity", "major"));
+    const listed = envelope(runCli(directory, "list", "--limit", "1"));
+    assert.equal(listed.count, 1);
+    assert.equal(listed.items[0].cut.severity, "major");
+    assert.equal(listed.truncated, true);
+    assert.equal(listed.total, 2);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli add from a subdirectory anchors the journal at the repository root", () => {
+  const directory = createTemporaryRepository();
+  mkdirSync(join(directory, "apps", "web"), { recursive: true });
+  try {
+    const data = envelope(runCli(join(directory, "apps", "web"), "add", "nested cwd friction"));
+    assert.equal(data.record.repo, directory);
+    assert.ok(existsSync(join(directory, ".papercuts.jsonl")));
+    assert.equal(existsSync(join(directory, "apps", "web", ".papercuts.jsonl")), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli PAPERCUTS_FILE routes the journal outside repository discovery", () => {
+  const directory = createTemporaryRepository();
+  const alt = join(directory, "elsewhere", "journal.jsonl");
+  try {
+    const data = envelope(runCliEnv(directory, { PAPERCUTS_FILE: alt }, "add", "routed elsewhere"));
+    assert.equal(data.changed, true);
+    assert.ok(existsSync(alt));
+    assert.equal(existsSync(join(directory, ".papercuts.jsonl")), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli unknown command prints usage and exits 1", () => {
+  const directory = createTemporaryDirectory();
+  try {
+    const result = runCli(directory, "frobnicate");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Usage:/);
+    assert.equal(JSON.parse(result.stdout).error.code, "usage");
+    assert.equal(existsSync(join(directory, ".papercuts.jsonl")), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("cli re-adding a removed papercut supersedes the remove", () => {
+  const directory = createTemporaryRepository();
+  try {
+    const added = envelope(runCli(directory, "add", "back again"));
+    envelope(runCli(directory, "remove", added.record.id));
+    assert.equal(envelope(runCli(directory, "list")).total, 0);
+
+    const reAdded = envelope(runCli(directory, "add", "back again"));
+    assert.equal(reAdded.changed, true);
+    const open = envelope(runCli(directory, "list"));
+    assert.equal(open.total, 1);
+    assert.equal(open.items[0].cut.id, reAdded.record.id);
+    // Same content-addressed id by design; the newer cut supersedes the remove.
+    const kinds = readFileSync(join(directory, ".papercuts.jsonl"), "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line).kind);
+    assert.deepEqual(kinds, ["cut", "remove", "cut"]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
