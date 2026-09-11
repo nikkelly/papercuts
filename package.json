@@ -52,7 +52,7 @@
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "dependencies": {
-    "zod": "4.1.8"
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "^1.18.21",
